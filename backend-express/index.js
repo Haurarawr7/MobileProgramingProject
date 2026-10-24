@@ -1,3 +1,7 @@
+// Load environment variables before initializing Prisma or routes.
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
 //import express
 const express = require('express')
 
@@ -6,9 +10,6 @@ const cors = require('cors')
 
 //import bodyParser
 const bodyParser = require('body-parser')
-
-//import path
-const path = require('path')
 
 //import router
 const router = require('./routes')
