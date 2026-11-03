@@ -1,13 +1,8 @@
-//importReact
 import React from 'react';
-
-//import navigation
-import Navigation from '../navigations';
+import App from '../../App';
 
 const Index = () => {
-  return (
-    <Navigation />
-  );
-}
+  return <App />;
+};
 
 export default Index;
