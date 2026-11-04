@@ -744,7 +744,12 @@ function MateriCard({ item, width, height }) {
   );
 }
 
-function MateriScreen({ onBack, initialMateriTitle }) {
+function MateriScreen({
+  onBack,
+  initialMateriTitle,
+  bookmarks,
+  onToggleBookmark,
+}) {
   const { width, height } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const initialIndex = MATERI.findIndex((materi) => materi.title === initialMateriTitle);
@@ -788,6 +793,10 @@ function MateriScreen({ onBack, initialMateriTitle }) {
     listRef.current?.scrollTo({ x: 0, animated: false });
   };
 
+  const current = data[index];
+  const currentKey = current ? `materi:${current.id}` : null;
+  const isBookmarked = currentKey ? bookmarks.includes(currentKey) : false;
+
   return (
     <View style={styles.mScreen}>
       {/* Header */}
@@ -795,7 +804,20 @@ function MateriScreen({ onBack, initialMateriTitle }) {
         <TouchableOpacity onPress={onBack} hitSlop={12}>
           <Ionicons name="arrow-back" size={28} color={COLORS.secondary} />
         </TouchableOpacity>
-        <Text style={styles.mHeaderTitle}>Materi</Text>
+        <Text style={[styles.mHeaderTitle, { flex: 1 }]}>Materi</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={isBookmarked ? 'Hapus bookmark' : 'Simpan bookmark'}
+          style={[styles.iconButton, isBookmarked && styles.iconButtonActive]}
+          disabled={!current}
+          onPress={() => onToggleBookmark(currentKey)}
+        >
+          <Ionicons
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={22}
+            color={isBookmarked ? COLORS.secondary : COLORS.primary}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Search */}
@@ -869,19 +891,16 @@ function SavedItem({ item, onToggle, onPress }) {
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => onToggle(item.id)} hitSlop={12}>
+      <TouchableOpacity onPress={() => onToggle(item.bookmarkKey)} hitSlop={12}>
         <Ionicons name="bookmark" size={24} color={COLORS.secondary} />
       </TouchableOpacity>
     </View>
   );
 }
 
-function SavedScreen({onOpenItem}) {
-  const [items, setItems] = useState(SAVED_INITIAL);
+function SavedScreen({ items, onToggleBookmark, onOpenItem }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Semua');
-
-  const removeItem = (id) => setItems((prev) => prev.filter((i) => i.id !== id));
 
   const data = items.filter(
     (i) =>
@@ -937,7 +956,7 @@ function SavedScreen({onOpenItem}) {
       {/* List */}
       {data.length > 0 ? (
         data.map((item) => (
-          <SavedItem key={item.id} item={item} onToggle={removeItem} onPress={onOpenItem} />
+          <SavedItem key={item.bookmarkKey} item={item} onToggle={onToggleBookmark} onPress={onOpenItem} />
         ))
       ) : (
         <View style={styles.emptyBox}>
@@ -1067,11 +1086,51 @@ function ProfileScreen({onBack}) {
 // ---------- App ----------
 export default function App() {
   const [navigationStack, setNavigationStack] = useState(['home']);
+  const [savedItems, setSavedItems] = useState(() =>
+    SAVED_INITIAL.map((item) => ({
+      ...item,
+      bookmarkKey:
+        item.type === 'Materi'
+          ? `materi:${MATERI.find((materi) => materi.title === item.title)?.id ?? item.id}`
+          : `kuis:${item.id}`,
+    })),
+  );
 
   // Menentukan materi terpilih berdasarkan page Tersimpan
   const [selectedMateriTitle, setSelectedMateriTitle] = useState(null);
   const [scannedForm, setScannedForm] = useState(null);
   const activeTab = navigationStack[navigationStack.length - 1];
+  const bookmarks = savedItems.map((item) => item.bookmarkKey);
+
+  const onToggleBookmark = (bookmarkKey) => {
+    setSavedItems((previousItems) => {
+      if (previousItems.some((item) => item.bookmarkKey === bookmarkKey)) {
+        return previousItems.filter((item) => item.bookmarkKey !== bookmarkKey);
+      }
+
+      const [type, id] = bookmarkKey.split(':');
+      if (type !== 'materi') {
+        return previousItems;
+      }
+
+      const materi = MATERI.find((item) => item.id === id);
+      if (!materi) {
+        return previousItems;
+      }
+
+      return [
+        ...previousItems,
+        {
+          id: bookmarkKey,
+          bookmarkKey,
+          title: materi.title,
+          topic: materi.topic,
+          duration: materi.duration,
+          type: 'Materi',
+        },
+      ];
+    });
+  };
 
   const navigateTo = (nextScreen) => {
     if (nextScreen === activeTab) {
@@ -1106,12 +1165,16 @@ export default function App() {
         <MateriScreen
           onBack={goBack}
           initialMateriTitle={selectedMateriTitle}
-          />
+          bookmarks={bookmarks}
+          onToggleBookmark={onToggleBookmark}
+        />
       );
       break;
     case 'saved':
       screen = (
         <SavedScreen
+          items={savedItems}
+          onToggleBookmark={onToggleBookmark}
           onOpenItem={(item) => {
             if (item.type === 'Materi') {
               setSelectedMateriTitle(item.title);
@@ -1191,6 +1254,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.addAmber,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconButtonActive: {
+    backgroundColor: COLORS.addCreamDark,
+    borderColor: COLORS.secondary,
   },
   cameraPreview: {
     flex: 1,
@@ -1572,6 +1639,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 8,
+    
     borderWidth: 1,
     borderColor: COLORS.addAmber,
     gap: 16,
