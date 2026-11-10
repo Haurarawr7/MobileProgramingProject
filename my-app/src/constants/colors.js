@@ -1,21 +1,27 @@
 export const COLORS = {
-  // Primary (biru)
-  primary: '#102A6B', // Silent Navy
-  primaryMid: '#015185', // Blue Current
-
-  // Secondary (merah)
-  secondary: '#B3282D',
-
-  // Tambahan
-  addAmber: '#CEA273', // Sandy Amber
-  addSky: '#5990C0', // Blue Haze
-  addCream: '#FCEDD3', // Light Cream
-  addGold: '#aa8631', // Mustard Gold
-  addCreamDark: '#F3DDB8',
-
-  // Netral
-  surface: '#FFF7E8',
-  text: '#3F4B73',
-  muted: '#7F89A8',
+  // ---- Token baru (pakai ini untuk kode baru) ----
+  background: '#FDFCF6', // Paper Cream
+  ink: '#22222F', // teks + outline
+  yellow: '#FDE04B', // Butter Yellow: aksi utama
+  sky: '#C7DFFB', // Sky Wash
+  blue: '#5C9CF0', // Calendar Blue
+  pink: '#FFCFE2', // Candy Pink (kartu ID saja)
+  red: '#E8384F', // Slayer Red (aksen kecil)
+  mint: '#DDF0D2', // Soft Mint (kartu jadwal)
+  gray: '#9B9B9B',
   white: '#FFFFFF',
+ 
+  // ---- Key lama -> dipetakan ke palet baru ----
+  primary: '#22222F', // judul/teks utama = ink
+  primaryMid: '#5C9CF0', // progress, switch aktif = blue
+  secondary: '#E8384F', // back arrow, logout = red
+  addAmber: '#22222F', // outline kartu/tombol = ink
+  addSky: '#5C9CF0',
+  addCream: '#FDFCF6', // dipakai sebagai warna "lubang" tiket
+  addGold: '#5C9CF0', // angka ringkasan = blue
+  addCreamDark: '#C7DFFB', // track/chip netral = sky
+  surface: '#FDFCF6',
+  text: '#3A3B4D',
+  muted: '#9B9B9B',
 };
+ 

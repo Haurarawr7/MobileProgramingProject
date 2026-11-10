@@ -1,10 +1,14 @@
 import { StyleSheet } from 'react-native';
 import { COLORS } from '../constants/colors';
+import { FONTS } from '../constants/fonts';
 
-// Style yang dipakai di banyak halaman.
-// Style khusus satu halaman ada di file halaman itu sendiri.
+// Catatan: dengan font custom, JANGAN pakai fontWeight.
+// Pilih bobot lewat fontFamily (sans / sansMedium / sansSemi).
+
+const OUTLINE = 1.5;
+
 export default StyleSheet.create({
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   screen: { flex: 1 },
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
 
@@ -15,14 +19,25 @@ export default StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 24,
   },
-  greeting: { fontSize: 14, color: COLORS.text, marginBottom: 2 },
-  title: { fontSize: 26, fontWeight: '800', color: COLORS.primary },
+  greeting: {
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    color: COLORS.ink,
+    marginBottom: 2,
+  },
+  title: {
+    fontFamily: FONTS.serif,
+    fontSize: 40,
+    lineHeight: 46,
+    color: COLORS.ink,
+  },
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.addAmber,
+    borderRadius: 12,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -36,7 +51,12 @@ export default StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 20,
   },
-  mHeaderTitle: { fontSize: 26, fontWeight: '800', color: COLORS.primary },
+  mHeaderTitle: {
+    fontFamily: FONTS.serif,
+    fontSize: 40,
+    lineHeight: 46,
+    color: COLORS.ink,
+  },
 
   // Section
   sectionHeader: {
@@ -45,11 +65,17 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  sectionTitle: { fontSize: 19, fontWeight: '700', color: COLORS.primary },
+  sectionTitle: {
+    fontFamily: FONTS.serif,
+    fontSize: 28,
+    lineHeight: 34,
+    color: COLORS.ink,
+  },
   sectionTitleSolo: { marginBottom: 14 },
   linkAll: {
+    fontFamily: FONTS.sans,
     fontSize: 13,
-    color: COLORS.text,
+    color: COLORS.ink,
     textDecorationLine: 'underline',
   },
 
@@ -59,39 +85,53 @@ export default StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.addAmber,
+    borderRadius: 12,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
   },
   summaryValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.addGold,
-    marginBottom: 6,
+    fontFamily: FONTS.serif,
+    fontSize: 32,
+    lineHeight: 36,
+    color: COLORS.blue,
+    marginBottom: 4,
   },
-  summaryLabel: { fontSize: 12, color: COLORS.text },
+  summaryLabel: { fontFamily: FONTS.sans, fontSize: 12, color: COLORS.ink },
 
-  // Buttons
+  // Buttons: kuning, outline ink (tombol utama)
   quizButton: {
     height: 52,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.yellow,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
-  quizButtonText: { fontSize: 16, fontWeight: '700', color: COLORS.white },
+  quizButtonText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 16,
+    color: COLORS.ink,
+  },
+  // Tombol sekunder / destruktif: outline merah
   logoutButton: {
     height: 52,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
+    borderRadius: 12,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.red,
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  logoutText: { fontSize: 16, fontWeight: '700', color: COLORS.secondary },
+  logoutText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 16,
+    color: COLORS.red,
+  },
 
   // Search
   searchBox: {
@@ -99,44 +139,52 @@ export default StyleSheet.create({
     alignItems: 'center',
     height: 48,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.addAmber,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
     paddingHorizontal: 14,
     marginBottom: 28,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
+    fontFamily: FONTS.sans,
     fontSize: 15,
-    color: COLORS.primary,
+    color: COLORS.ink,
   },
 
-  // Filter chip (dipakai di Generate)
+  // Filter chip: pill, aktif = kuning
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.addAmber,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: OUTLINE,
+    borderColor: COLORS.blue,
+    backgroundColor: COLORS.white,
   },
   filterChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.yellow,
+    borderColor: COLORS.ink,
   },
-  filterText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  filterTextActive: { color: COLORS.white },
+  filterText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.blue,
+  },
+  filterTextActive: { color: COLORS.ink },
 
   // Misc
   activityDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.addAmber,
+    borderBottomColor: COLORS.sky,
   },
   emptyBox: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 24 },
   emptyDesc: {
+    fontFamily: FONTS.sans,
     fontSize: 13,
     lineHeight: 19,
-    color: COLORS.text,
+    color: COLORS.ink,
     textAlign: 'center',
   },
 
