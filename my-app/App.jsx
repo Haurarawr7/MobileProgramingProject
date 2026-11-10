@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-import { TABS } from './src/constants/data';
+import { TABS, MATERI } from './src/constants/data';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
+import { getLastOpened, saveOpened } from './src/services/progress';
 
 import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
@@ -13,11 +14,38 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import DynamicFormScreen from './src/screens/DynamicFormScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
+import { useFonts } from 'expo-font';
+import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold,} from '@expo-google-fonts/poppins';
+import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
+
 
 export default function App() {
   const [navigationStack, setNavigationStack] = useState(['home']);
   const [scannedForm, setScannedForm] = useState(null);
+  const [lastOpenedId, setLastOpenedId] = useState(null);
+  const [selectedMateriId, setSelectedMateriId] = useState(null);
+  const [lastProgress, setLastProgress] = useState(0);
+  const lastOpened = MATERI.find((m) => m.id === lastOpenedId) ?? null;
   const activeTab = navigationStack[navigationStack.length - 1];
+  const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
+
+  useEffect(() => {
+    getLastOpened()
+      .then((last) => {
+        if (!last) return;
+        setLastOpenedId(last.materiId);
+        setLastProgress(last.progress ?? 0);
+      })
+      .catch((e) => console.warn('Gagal memuat materi terakhir', e));
+  }, []);
+
+  if (!fontsLoaded) return null;
+
+  const handleStart = (materi) => {
+    setLastOpenedId(materi.id);
+    setLastProgress(0);
+    saveOpened(materi.id).catch((e) => console.warn('Gagal menyimpan', e));
+  };
 
   const navigateTo = (nextScreen) => {
     if (nextScreen === activeTab) return;
@@ -31,7 +59,13 @@ export default function App() {
   let screen;
   switch (activeTab) {
     case 'materi':
-      screen = <MateriScreen onBack={goBack} />;
+      screen = (
+        <MateriScreen
+          onBack={goBack}
+          initialMateriId={selectedMateriId}
+          onStart={handleStart}
+        />
+      );
       break;
     case 'games':
       screen = <MiniGameScreen onBack={goBack} />;
@@ -61,7 +95,16 @@ export default function App() {
     default:
       screen = (
         <HomeScreen
-          onGoMateri={() => navigateTo('materi')}
+          lastOpened={lastOpened}
+          lastProgress={lastProgress}
+          onGoMateri={() => {
+            setSelectedMateriId(null);
+            navigateTo('materi');
+          }}
+          onContinue={() => {
+            setSelectedMateriId(lastOpenedId);
+            navigateTo('materi');
+          }}
           onGoScan={() => navigateTo('scan')}
         />
       );

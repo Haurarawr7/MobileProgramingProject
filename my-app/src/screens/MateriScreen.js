@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ function LevelSlider({ count, index, onPressDot }) {
   );
 }
 
-function MateriCard({ item, width, height }) {
+function MateriCard({ item, width, height, onStart }) {
   return (
     <View style={[styles.mCard, { width, height }]}>
       {/* Atas: judul + tag */}
@@ -73,7 +73,11 @@ function MateriCard({ item, width, height }) {
             resizeMode="contain"
           />
         </View>
-        <TouchableOpacity style={styles.mButton} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.mButton}
+          activeOpacity={0.85}
+          onPress={() => onStart?.(item)}
+        >
           <Text style={styles.mButtonText}>Mulai belajar</Text>
         </TouchableOpacity>
       </View>
@@ -81,16 +85,28 @@ function MateriCard({ item, width, height }) {
   );
 }
 
-export default function MateriScreen({ onBack }) {
+export default function MateriScreen({ onBack, initialMateriId, onStart }) {
   const { width, height } = useWindowDimensions();
   const [query, setQuery] = useState('');
-  const [index, setIndex] = useState(0);
+  const initialIndex = Math.max(
+    0,
+    MATERI.findIndex((m) => m.id === initialMateriId),
+  );
+  const [index, setIndex] = useState(initialIndex);
   const listRef = useRef(null);
 
   const CARD_W = width - 64;
   const GAP = 12;
   const INTERVAL = CARD_W + GAP;
   const CARD_H = Math.min(560, height * 0.62);
+
+  useEffect(() => {
+    if (initialIndex < 1) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ x: initialIndex * INTERVAL, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialIndex, INTERVAL]);
 
   const data = MATERI.filter((m) =>
     m.title.toLowerCase().includes(query.trim().toLowerCase()),
@@ -157,6 +173,7 @@ export default function MateriScreen({ onBack }) {
               item={item}
               width={CARD_W}
               height={CARD_H}
+              onStart={onStart}
             />
           ))}
         </ScrollView>

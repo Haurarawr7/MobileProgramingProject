@@ -42,7 +42,9 @@ function StreakBar({ total, active }) {
   );
 }
 
-function ContinueCard({ progress = 0.5, onPress }) {
+function ContinueCard({ materi, progress = 0, onContinue, onPickMateri }) {
+  const isEmpty = !materi;
+
   return (
     <View style={styles.featuredCard}>
       <View style={styles.featuredImage}>
@@ -53,16 +55,28 @@ function ContinueCard({ progress = 0.5, onPress }) {
         />
       </View>
       <View style={styles.featuredInfo}>
-        <Text style={styles.featuredTag}>Bagian 1</Text>
-        <Text style={styles.featuredTitle}>Pencarian Berurutan</Text>
-        <Text style={styles.featuredDesc}>
-          Cari data secara berurutan dan pelajari cara algoritma bekerja.
+        <Text style={styles.featuredTag}>
+          {isEmpty ? 'Belum ada materi' : materi.topic}
         </Text>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-        </View>
-        <TouchableOpacity onPress={onPress}>
-          <Text style={styles.featuredLink}>Lanjutkan →</Text>
+        <Text style={styles.featuredTitle}>
+          {isEmpty ? 'Mulai belajar' : materi.title}
+        </Text>
+        <Text style={styles.featuredDesc}>
+          {isEmpty
+            ? 'Pilih satu materi, nanti materi terakhirmu muncul di sini.'
+            : `${materi.level} · ${materi.duration}`}
+        </Text>
+        {!isEmpty && (
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, { width: `${progress * 100}%` }]}
+            />
+          </View>
+        )}
+        <TouchableOpacity onPress={isEmpty ? onPickMateri : onContinue}>
+          <Text style={styles.featuredLink}>
+            {isEmpty ? 'Pilih materi →' : 'Lanjutkan →'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -88,7 +102,13 @@ function ActivityItem({ item, isLast }) {
   );
 }
 
-export default function HomeScreen({ onGoMateri, onGoScan }) {
+export default function HomeScreen({
+  lastOpened,
+  lastProgress = 0,
+  onGoMateri,
+  onContinue,
+  onGoScan,
+}) {
   const [query, setQuery] = useState('');
 
   return (
@@ -158,7 +178,12 @@ export default function HomeScreen({ onGoMateri, onGoScan }) {
 
       {/* Lanjutkan Materi */}
       <SectionHeader title="Lanjutkan Materi" onPressLink={onGoMateri} />
-      <ContinueCard progress={0.5} onPress={onGoMateri} />
+      <ContinueCard
+        materi={lastOpened}
+        progress={lastProgress}
+        onContinue={onContinue}
+        onPickMateri={onGoMateri}
+      />
 
       {/* Aktivitas Belajar */}
       <SectionHeader title="Aktivitas Belajar" />
