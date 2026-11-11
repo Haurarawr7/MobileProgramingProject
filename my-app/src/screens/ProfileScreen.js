@@ -13,9 +13,10 @@ import { PROFILE, SUMMARY, BADGES, MENU } from '../constants/data';
 import common from '../styles/common';
 import SummaryCard from '../components/SummaryCard';
 
-export default function ProfileScreen({ onBack }) {
+export default function ProfileScreen({ onBack, onLogout, user }) {
   const [notif, setNotif] = useState(true);
-  const initial = PROFILE.name.charAt(0).toUpperCase();
+  const displayName = user?.name || PROFILE.name;
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <ScrollView
@@ -45,10 +46,10 @@ export default function ProfileScreen({ onBack }) {
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName} numberOfLines={1}>
-            {PROFILE.name}
+            {displayName}
           </Text>
           <Text style={styles.profileSub}>
-            {PROFILE.grade} · {PROFILE.school}
+            {user?.email || `${PROFILE.grade} · ${PROFILE.school}`}
           </Text>
         </View>
       </View>
@@ -110,7 +111,11 @@ export default function ProfileScreen({ onBack }) {
       </View>
 
       {/* Keluar */}
-      <TouchableOpacity style={common.logoutButton} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={common.logoutButton}
+        activeOpacity={0.85}
+        onPress={onLogout}
+      >
         <Ionicons name="log-out-outline" size={20} color={COLORS.secondary} />
         <Text style={common.logoutText}>Keluar</Text>
       </TouchableOpacity>

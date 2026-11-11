@@ -14,13 +14,17 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import DynamicFormScreen from './src/screens/DynamicFormScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
+import LoginScreen from './src/screens/Login';
+import SigninScreen from './src/screens/Signin';
+import { getSavedUser, logoutUser } from './src/services/auth';
 import { useFonts } from 'expo-font';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold,} from '@expo-google-fonts/poppins';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
 
 
 export default function App() {
-  const [navigationStack, setNavigationStack] = useState(['home']);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [navigationStack, setNavigationStack] = useState(['login']);
   const [scannedForm, setScannedForm] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
@@ -30,6 +34,16 @@ export default function App() {
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
 
   useEffect(() => {
+    // Periksa apakah user sudah login sebelumnya
+    getSavedUser().then((savedUser) => {
+      if (savedUser) {
+        setCurrentUser(savedUser);
+        setNavigationStack(['home']);
+      } else {
+        setNavigationStack(['login']);
+      }
+    });
+
     getLastOpened()
       .then((last) => {
         if (!last) return;
@@ -40,6 +54,17 @@ export default function App() {
   }, []);
 
   if (!fontsLoaded) return null;
+
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    setNavigationStack(['home']);
+  };
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setCurrentUser(null);
+    setNavigationStack(['login']);
+  };
 
   const handleStart = (materi) => {
     setLastOpenedId(materi.id);
@@ -53,11 +78,33 @@ export default function App() {
   };
 
   const goBack = () => {
-    setNavigationStack((prev) => (prev.length <= 1 ? ['home'] : prev.slice(0, -1)));
+    setNavigationStack((prev) => {
+      if (prev.length <= 1) {
+        return currentUser ? ['home'] : ['login'];
+      }
+      return prev.slice(0, -1);
+    });
   };
 
   let screen;
   switch (activeTab) {
+    case 'login':
+      screen = (
+        <LoginScreen
+          onLoginSuccess={handleLoginSuccess}
+          onGoRegister={() => navigateTo('signin')}
+        />
+      );
+      break;
+    case 'signin':
+      screen = (
+        <SigninScreen
+          onBack={goBack}
+          onGoLogin={() => navigateTo('login')}
+          onRegisterSuccess={handleLoginSuccess}
+        />
+      );
+      break;
     case 'materi':
       screen = (
         <MateriScreen
@@ -71,7 +118,13 @@ export default function App() {
       screen = <MiniGameScreen onBack={goBack} />;
       break;
     case 'profile':
-      screen = <ProfileScreen onBack={goBack} />;
+      screen = (
+        <ProfileScreen
+          onBack={goBack}
+          onLogout={handleLogout}
+          user={currentUser}
+        />
+      );
       break;
     case 'scan':
       screen = (

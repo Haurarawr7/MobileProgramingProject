@@ -68,7 +68,7 @@ function MateriCard({ item, width, height, onStart }) {
       <View style={styles.mCardBottom}>
         <View style={styles.mImageWrap}>
           <Image
-            source={ILLUSTRATION}
+            source={require('../assets/illustration/ilustration1.png')}
             style={StyleSheet.absoluteFill}
             resizeMode="contain"
           />

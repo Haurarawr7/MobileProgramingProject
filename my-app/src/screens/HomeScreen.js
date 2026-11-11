@@ -47,13 +47,6 @@ function ContinueCard({ materi, progress = 0, onContinue, onPickMateri }) {
 
   return (
     <View style={styles.featuredCard}>
-      <View style={styles.featuredImage}>
-        <Image
-          source={ILLUSTRATION}
-          style={StyleSheet.absoluteFill}
-          resizeMode="contain"
-        />
-      </View>
       <View style={styles.featuredInfo}>
         <Text style={styles.featuredTag}>
           {isEmpty ? 'Belum ada materi' : materi.topic}
@@ -145,36 +138,17 @@ export default function HomeScreen({
         </View>
       </View>
 
-      {/* Streak */}
-      <SectionHeader title="Streak" linkLabel="Lihat statistik" />
-      <StreakBar total={STREAK_TOTAL} active={STREAK_ACTIVE} />
-
-      {/* Ringkasan Belajar */}
-      <Text style={[common.sectionTitle, common.sectionTitleSolo]}>
-        Ringkasan Belajar
-      </Text>
       <View style={common.summaryRow}>
         {SUMMARY.map((s) => (
           <SummaryCard key={s.id} value={s.value} label={s.label} />
         ))}
       </View>
-
+      <StreakBar total={STREAK_TOTAL} active={STREAK_ACTIVE} />
+      <SectionHeader />
       {/* CTA Kuis */}
       <TouchableOpacity style={common.quizButton} activeOpacity={0.85}>
         <Text style={common.quizButtonText}>Kerjakan Kuis Harian</Text>
       </TouchableOpacity>
-
-      {/* Search */}
-      <View style={common.searchBox}>
-        <Ionicons name="search-outline" size={20} color={COLORS.muted} />
-        <TextInput
-          style={common.searchInput}
-          placeholder="Cari materi"
-          placeholderTextColor={COLORS.muted}
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
 
       {/* Lanjutkan Materi */}
       <SectionHeader title="Lanjutkan Materi" onPressLink={onGoMateri} />

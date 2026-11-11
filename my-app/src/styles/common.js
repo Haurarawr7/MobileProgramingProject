@@ -27,8 +27,8 @@ export default StyleSheet.create({
   },
   title: {
     fontFamily: FONTS.serif,
-    fontSize: 40,
-    lineHeight: 46,
+    fontSize: 30,
+    lineHeight: 36,
     color: COLORS.ink,
   },
   iconButton: {
