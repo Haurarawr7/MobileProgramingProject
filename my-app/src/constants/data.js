@@ -40,6 +40,7 @@ export const TABS = [
   { key: 'home', label: 'Beranda', icon: 'home-outline' },
   { key: 'materi', label: 'Materi', icon: 'grid-outline' },
   { key: 'games', label: 'Mini Game', icon: 'game-controller-outline' },
+  { key: 'leaderboard', label: 'Peringkat', icon: 'trophy-outline' },
   { key: 'profile', label: 'Profil', icon: 'person-outline' },
 ];
 

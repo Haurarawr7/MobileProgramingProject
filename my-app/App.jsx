@@ -11,6 +11,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import DynamicFormScreen from './src/screens/DynamicFormScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
@@ -125,6 +126,9 @@ export default function App() {
           user={currentUser}
         />
       );
+      break;
+    case 'leaderboard':
+      screen = <LeaderboardScreen user={currentUser} />;
       break;
     case 'scan':
       screen = (

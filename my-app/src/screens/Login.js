@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,16 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { loginWithEmail, loginAsGuest, resetPassword } from '../services/auth';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import {
+  loginWithEmail,
+  loginAsGuest,
+  resetPassword,
+  loginWithGoogleCredential,
+} from '../services/auth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   const [email, setEmail] = useState('');
@@ -21,6 +30,60 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Hook Google Auth dari expo-auth-session
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token, authentication } = response.params;
+      handleGoogleResponse(id_token || authentication?.idToken, authentication?.accessToken);
+    }
+  }, [response]);
+
+  const handleGoogleResponse = async (idToken, accessToken) => {
+    setGoogleLoading(true);
+    let userInfo = null;
+    if (accessToken) {
+      try {
+        const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        userInfo = await res.json();
+      } catch (e) {
+        // ignore
+      }
+    }
+    const result = await loginWithGoogleCredential(idToken, userInfo);
+    setGoogleLoading(false);
+    if (result.success) {
+      onLoginSuccess?.(result.user);
+    } else {
+      Alert.alert('Gagal Masuk dengan Google', result.error || 'Terjadi kesalahan.');
+    }
+  };
+
+  const handleGooglePress = async () => {
+    if (request && process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      promptAsync();
+    } else {
+      // Fallback cepat (Demo) jika Client ID belum dipasang di .env
+      setGoogleLoading(true);
+      const result = await loginWithGoogleCredential(null, {
+        name: 'Pengguna Google',
+        email: 'user.google@gmail.com',
+      });
+      setGoogleLoading(false);
+      if (result.success) {
+        onLoginSuccess?.(result.user);
+      }
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim()) {
@@ -181,6 +244,28 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
           <Text style={styles.dividerText}>atau</Text>
           <View style={styles.dividerLine} />
         </View>
+
+        {/* Tombol Masuk dengan Google */}
+        <TouchableOpacity
+          style={styles.googleButton}
+          activeOpacity={0.85}
+          onPress={handleGooglePress}
+          disabled={googleLoading}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color="#1F2937" />
+          ) : (
+            <View style={styles.googleButtonContent}>
+              <Ionicons
+                name="logo-google"
+                size={18}
+                color="#EA4335"
+                style={{ marginRight: 10 }}
+              />
+              <Text style={styles.googleButtonText}>Masuk dengan Google</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Tombol Sekunder: Coba sebagai tamu */}
         <TouchableOpacity
@@ -361,6 +446,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     fontSize: 13,
     color: '#6B7280',
+  },
+  googleButton: {
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleButtonText: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   secondaryButton: {
     height: 48,

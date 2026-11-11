@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,11 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { registerWithEmail } from '../services/auth';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { registerWithEmail, loginWithGoogleCredential } from '../services/auth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   const [name, setName] = useState('');
@@ -23,6 +27,60 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Hook Google Auth dari expo-auth-session
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token, authentication } = response.params;
+      handleGoogleResponse(id_token || authentication?.idToken, authentication?.accessToken);
+    }
+  }, [response]);
+
+  const handleGoogleResponse = async (idToken, accessToken) => {
+    setGoogleLoading(true);
+    let userInfo = null;
+    if (accessToken) {
+      try {
+        const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        userInfo = await res.json();
+      } catch (e) {
+        // ignore
+      }
+    }
+    const result = await loginWithGoogleCredential(idToken, userInfo);
+    setGoogleLoading(false);
+    if (result.success) {
+      onRegisterSuccess?.(result.user);
+    } else {
+      Alert.alert('Gagal Daftar dengan Google', result.error || 'Terjadi kesalahan.');
+    }
+  };
+
+  const handleGooglePress = async () => {
+    if (request && process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      promptAsync();
+    } else {
+      // Fallback cepat (Demo) jika Client ID belum dipasang di .env
+      setGoogleLoading(true);
+      const result = await loginWithGoogleCredential(null, {
+        name: 'Pengguna Google Baru',
+        email: 'user.google@gmail.com',
+      });
+      setGoogleLoading(false);
+      if (result.success) {
+        onRegisterSuccess?.(result.user);
+      }
+    }
+  };
 
   const handleRegister = async () => {
     if (!name.trim()) {
@@ -203,6 +261,35 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
           )}
         </TouchableOpacity>
 
+        {/* Divider "atau" */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>atau</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Tombol Daftar dengan Google */}
+        <TouchableOpacity
+          style={styles.googleButton}
+          activeOpacity={0.85}
+          onPress={handleGooglePress}
+          disabled={googleLoading}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color="#1F2937" />
+          ) : (
+            <View style={styles.googleButtonContent}>
+              <Ionicons
+                name="logo-google"
+                size={18}
+                color="#EA4335"
+                style={{ marginRight: 10 }}
+              />
+              <Text style={styles.googleButtonText}>Daftar dengan Google</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         {/* Footer: Sudah punya akun? Masuk */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Sudah punya akun Logithm? </Text>
@@ -326,12 +413,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#3A3A3C',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 14,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  googleButton: {
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleButtonText: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   footerRow: {
     flexDirection: 'row',
