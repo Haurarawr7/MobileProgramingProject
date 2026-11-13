@@ -10,6 +10,8 @@ import { getLastOpened, saveOpened } from './src/services/progress';
 import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
+import GameSetupScreen from './src/screens/GameSetupScreen';
+import GamePlayScreen from './src/screens/GamePlayScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -29,6 +31,7 @@ export default function App() {
   const [scannedForm, setScannedForm] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
+  const [gameConfig, setGameConfig] = useState(null);
   const [lastProgress, setLastProgress] = useState(0);
   const lastOpened = MATERI.find((m) => m.id === lastOpenedId) ?? null;
   const activeTab = navigationStack[navigationStack.length - 1];
@@ -71,6 +74,8 @@ export default function App() {
     setLastOpenedId(materi.id);
     setLastProgress(0);
     saveOpened(materi.id).catch((e) => console.warn('Gagal menyimpan', e));
+    setSelectedMateriId(materi.id);
+    navigateTo('game-setup');
   };
 
   const navigateTo = (nextScreen) => {
@@ -101,7 +106,7 @@ export default function App() {
       screen = (
         <SigninScreen
           onBack={goBack}
-          onGoLogin={() => navigateTo('login')}
+          onGoLogin={goBack}
           onRegisterSuccess={handleLoginSuccess}
         />
       );
@@ -116,7 +121,30 @@ export default function App() {
       );
       break;
     case 'games':
-      screen = <MiniGameScreen onBack={goBack} />;
+      screen = (
+        <MiniGameScreen
+          onBack={goBack}
+          onPlay={(game) => {
+            setSelectedMateriId(game.materiId);
+            navigateTo('game-setup');
+          }}
+        />
+      );
+      break;
+    case 'game-setup':
+      screen = (
+        <GameSetupScreen
+          initialMateriId={selectedMateriId}
+          onBack={goBack}
+          onStart={(config) => {
+            setGameConfig(config);
+            navigateTo('game-play');
+          }}
+        />
+      );
+      break;
+    case 'game-play':
+      screen = <GamePlayScreen config={gameConfig} onBack={goBack} />;
       break;
     case 'profile':
       screen = (

@@ -5,7 +5,6 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
@@ -34,7 +33,7 @@ function GameCard({ item, width, onPlay }) {
   );
 }
 
-export default function MiniGameScreen({ onBack }) {
+export default function MiniGameScreen({ onBack, onPlay }) {
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
 
@@ -43,11 +42,6 @@ export default function MiniGameScreen({ onBack }) {
   const data = GAMES.filter((g) =>
     g.title.toLowerCase().includes(query.trim().toLowerCase()),
   );
-
-  const onPlay = (game) => {
-    // TODO: arahkan ke layar game sesungguhnya
-    Alert.alert(game.title, 'Game ini segera hadir.');
-  };
 
   return (
     <View style={common.mScreen}>

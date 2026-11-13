@@ -24,16 +24,17 @@ export const MATERI = [
   { id: 'm3', title: 'Bubble Sort', level: 'SMA', topic: 'Algoritma', duration: '14 menit' },
   { id: 'm4', title: 'Selection Sort', level: 'SMA', topic: 'Algoritma', duration: '14 menit' },
   { id: 'm5', title: 'Quick Sort', level: 'SMA', topic: 'Algoritma', duration: '20 menit' },
+  { id: 'm6', title: 'Insertion Sort', level: 'SMA', topic: 'Algoritma', duration: '16 menit' },
 ];
 
 // Daftar Mini Game (ubah judul/tambah game di sini)
 export const GAMES = [
-  { id: 'g1', title: 'Pencarian Berurutan' },
-  { id: 'g2', title: 'Pencarian Biner' },
-  { id: 'g3', title: 'Bubble Sort' },
-  { id: 'g4', title: 'Selection Sort' },
-  { id: 'g5', title: 'Quick Sort' },
-  { id: 'g6', title: 'Insertion Sort' },
+  { id: 'g1', materiId: 'm1', title: 'Pencarian Berurutan' },
+  { id: 'g2', materiId: 'm2', title: 'Pencarian Biner' },
+  { id: 'g3', materiId: 'm3', title: 'Bubble Sort' },
+  { id: 'g4', materiId: 'm4', title: 'Selection Sort' },
+  { id: 'g5', materiId: 'm5', title: 'Quick Sort' },
+  { id: 'g6', materiId: 'm6', title: 'Insertion Sort' },
 ];
 
 export const TABS = [
