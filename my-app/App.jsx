@@ -12,6 +12,12 @@ import MateriScreen from './src/screens/MateriScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
 import GameSetupScreen from './src/screens/GameSetupScreen';
 import GamePlayScreen from './src/screens/GamePlayScreen';
+import MiniGame1 from './src/screens/inMiniGame1';
+import MiniGame2 from './src/screens/inMiniGame2';
+import MiniGame3 from './src/screens/inMiniGame3';
+import MiniGame4 from './src/screens/inMiniGame4';
+import MiniGame5 from './src/screens/inMiniGame5';
+import MiniGame6 from './src/screens/inMiniGame6';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -24,10 +30,20 @@ import { useFonts } from 'expo-font';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold,} from '@expo-google-fonts/poppins';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
 
+const MINI_GAME_SCREENS = {
+  m1: MiniGame1,
+  m2: MiniGame2,
+  m3: MiniGame3,
+  m4: MiniGame4,
+  m5: MiniGame5,
+  m6: MiniGame6,
+};
+
+// const AUTH_ENABLED = !__DEV__;
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [navigationStack, setNavigationStack] = useState(['login']);
+  const [navigationStack, setNavigationStack] = useState(['home']);
   const [scannedForm, setScannedForm] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
@@ -38,7 +54,7 @@ export default function App() {
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
 
   useEffect(() => {
-    // Periksa apakah user sudah login sebelumnya
+    /*
     getSavedUser().then((savedUser) => {
       if (savedUser) {
         setCurrentUser(savedUser);
@@ -47,6 +63,7 @@ export default function App() {
         setNavigationStack(['login']);
       }
     });
+    */
 
     getLastOpened()
       .then((last) => {
@@ -65,9 +82,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    setNavigationStack(['home']);
+    /*
     await logoutUser();
     setCurrentUser(null);
     setNavigationStack(['login']);
+    */
   };
 
   const handleStart = (materi) => {
@@ -86,7 +106,8 @@ export default function App() {
   const goBack = () => {
     setNavigationStack((prev) => {
       if (prev.length <= 1) {
-        return currentUser ? ['home'] : ['login'];
+        return ['home'];
+        // return currentUser ? ['home'] : ['login'];
       }
       return prev.slice(0, -1);
     });
@@ -143,9 +164,15 @@ export default function App() {
         />
       );
       break;
-    case 'game-play':
-      screen = <GamePlayScreen config={gameConfig} onBack={goBack} />;
+    case 'game-play': {
+      const GameScreen = MINI_GAME_SCREENS[gameConfig?.materiId];
+      screen = GameScreen ? (
+        <GameScreen level={gameConfig.level} onBack={goBack} />
+      ) : (
+        <GamePlayScreen config={gameConfig} onBack={goBack} />
+      );
       break;
+    }
     case 'profile':
       screen = (
         <ProfileScreen

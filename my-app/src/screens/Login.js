@@ -23,6 +23,12 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
+const GOOGLE_CLIENT_IDS = {
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
+};
+
 export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,13 +37,14 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const googleClientId = Platform.select({
+    android: GOOGLE_CLIENT_IDS.androidClientId,
+    ios: GOOGLE_CLIENT_IDS.iosClientId,
+    default: GOOGLE_CLIENT_IDS.webClientId,
+  });
 
   // Hook Google Auth dari expo-auth-session
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  });
+  const [request, response, promptAsync] = Google.useAuthRequest(GOOGLE_CLIENT_IDS);
 
   useEffect(() => {
     if (response?.type === 'success') {
@@ -69,7 +76,7 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   };
 
   const handleGooglePress = async () => {
-    if (request && process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+    if (request && googleClientId) {
       promptAsync();
     } else {
       // Fallback cepat (Demo) jika Client ID belum dipasang di .env
@@ -498,4 +505,3 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 });
-
