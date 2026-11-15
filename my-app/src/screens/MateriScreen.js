@@ -36,7 +36,15 @@ function LevelSlider({ count, index, onPressDot }) {
   );
 }
 
-function MateriCard({ item, width, height, onStart }) {
+function MateriCard({
+  item,
+  width,
+  height,
+  progress = 0,
+  completed = false,
+  onRead,
+  onQuiz,
+}) {
   return (
     <View style={[styles.mCard, { width, height }]}>
       {/* Atas: judul + tag */}
@@ -53,6 +61,13 @@ function MateriCard({ item, width, height, onStart }) {
           </View>
           <Text style={styles.mDuration}>{item.duration}</Text>
         </View>
+        <Text style={styles.mStatus}>
+          {completed
+            ? 'Selesai dibaca'
+            : progress > 0
+              ? `Progres membaca ${Math.round(progress * 100)}%`
+              : 'Belum dibaca'}
+        </Text>
       </View>
 
       {/* Pemisah tiket */}
@@ -73,25 +88,43 @@ function MateriCard({ item, width, height, onStart }) {
             resizeMode="contain"
           />
         </View>
-        <TouchableOpacity
-          style={styles.mButton}
-          activeOpacity={0.85}
-          onPress={() => onStart?.(item)}
-        >
-          <Text style={styles.mButtonText}>Mulai belajar</Text>
-        </TouchableOpacity>
+        <View style={styles.mActions}>
+          <TouchableOpacity
+            style={[styles.mButton, styles.mReadButton]}
+            activeOpacity={0.85}
+            onPress={() => onRead?.(item)}
+          >
+            <Text style={styles.mButtonText}>
+              {completed ? 'Baca lagi' : progress > 0 ? 'Lanjutkan' : 'Baca materi'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mButton, styles.mQuizButton]}
+            activeOpacity={0.85}
+            onPress={() => onQuiz?.(item)}
+          >
+            <Text style={styles.mQuizButtonText}>Kuis</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-export default function MateriScreen({ onBack, initialMateriId, onStart }) {
+export default function MateriScreen({
+  onBack,
+  initialMateriId,
+  progressByMateri = {},
+  completedMateri = [],
+  onRead,
+  onQuiz,
+}) {
   const { width, height } = useWindowDimensions();
   const [query, setQuery] = useState('');
-  const initialIndex = Math.max(
-    0,
-    MATERI.findIndex((m) => m.id === initialMateriId),
+  const data = MATERI.filter((m) =>
+    m.title.toLowerCase().includes(query.trim().toLowerCase()),
   );
+  const initialIndex = Math.max(0, data.findIndex((m) => m.id === initialMateriId));
   const [index, setIndex] = useState(initialIndex);
   const listRef = useRef(null);
 
@@ -107,10 +140,6 @@ export default function MateriScreen({ onBack, initialMateriId, onStart }) {
     });
     return () => cancelAnimationFrame(frame);
   }, [initialIndex, INTERVAL]);
-
-  const data = MATERI.filter((m) =>
-    m.title.toLowerCase().includes(query.trim().toLowerCase()),
-  );
 
   const onScrollEnd = (e) => {
     const i = Math.round(e.nativeEvent.contentOffset.x / INTERVAL);
@@ -173,7 +202,10 @@ export default function MateriScreen({ onBack, initialMateriId, onStart }) {
               item={item}
               width={CARD_W}
               height={CARD_H}
-              onStart={onStart}
+              progress={progressByMateri[item.id] || 0}
+              completed={completedMateri.includes(item.id)}
+              onRead={onRead}
+              onQuiz={onQuiz}
             />
           ))}
         </ScrollView>
@@ -233,7 +265,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  mCardTop: { paddingHorizontal: 18, paddingTop: 24, paddingBottom: 18 },
+  mCardTop: { paddingHorizontal: 18, paddingTop: 24, paddingBottom: 12 },
   mTitle: {
     fontSize: 26,
     fontWeight: '800',
@@ -254,6 +286,7 @@ const styles = StyleSheet.create({
   },
   mChipText: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
   mDuration: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  mStatus: { fontSize: 12, color: COLORS.text, marginTop: 10 },
 
   mDividerWrap: { height: 20, justifyContent: 'center' },
   mDashClip: { height: 1, overflow: 'hidden', marginHorizontal: 14 },
@@ -274,13 +307,21 @@ const styles = StyleSheet.create({
   },
 
   mCardBottom: { flex: 1, padding: 18, paddingTop: 8 },
-  mImageWrap: { flex: 1, marginBottom: 16 },
+  mImageWrap: { flex: 1, marginBottom: 12 },
+  mActions: { flexDirection: 'row', gap: 10 },
   mButton: {
+    flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  mReadButton: { backgroundColor: COLORS.primary },
+  mQuizButton: {
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
+  },
   mButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  mQuizButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.ink },
 });

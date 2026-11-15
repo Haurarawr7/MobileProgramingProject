@@ -3,12 +3,15 @@ import { View, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { TABS, MATERI } from './src/constants/data';
+import { LESSON_CONTENT, buildDailyQuiz } from './src/constants/lessonContent';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
-import { getLastOpened, saveOpened } from './src/services/progress';
+import { getLastOpened } from './src/services/progress';
 
 import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
+import LessonReaderScreen from './src/screens/LessonReaderScreen';
+import LessonQuizScreen from './src/screens/LessonQuizScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
 import GameSetupScreen from './src/screens/GameSetupScreen';
 import GamePlayScreen from './src/screens/GamePlayScreen';
@@ -48,7 +51,9 @@ export default function App() {
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
-  const [lastProgress, setLastProgress] = useState(0);
+  const [readingProgress, setReadingProgress] = useState({});
+  const [completedMateri, setCompletedMateri] = useState([]);
+  const [dailyQuestions] = useState(() => buildDailyQuiz(5));
   const lastOpened = MATERI.find((m) => m.id === lastOpenedId) ?? null;
   const activeTab = navigationStack[navigationStack.length - 1];
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
@@ -69,7 +74,6 @@ export default function App() {
       .then((last) => {
         if (!last) return;
         setLastOpenedId(last.materiId);
-        setLastProgress(last.progress ?? 0);
       })
       .catch((e) => console.warn('Gagal memuat materi terakhir', e));
   }, []);
@@ -90,12 +94,32 @@ export default function App() {
     */
   };
 
-  const handleStart = (materi) => {
+  const handleRead = (materi) => {
     setLastOpenedId(materi.id);
-    setLastProgress(0);
-    saveOpened(materi.id).catch((e) => console.warn('Gagal menyimpan', e));
     setSelectedMateriId(materi.id);
-    navigateTo('game-setup');
+    navigateTo('reader');
+  };
+
+  const handleQuiz = (materi) => {
+    setSelectedMateriId(materi.id);
+    navigateTo('lesson-quiz');
+  };
+
+  const updateReadingProgress = (materiId, progress) => {
+    setReadingProgress((current) => ({
+      ...current,
+      [materiId]: Math.max(current[materiId] || 0, progress),
+    }));
+  };
+
+  const finishReading = (materiId) => {
+    setReadingProgress((current) => ({ ...current, [materiId]: 1 }));
+    setCompletedMateri((current) =>
+      current.includes(materiId) ? current : [...current, materiId],
+    );
+    setLastOpenedId(materiId);
+    setSelectedMateriId(materiId);
+    navigateTo('lesson-quiz');
   };
 
   const navigateTo = (nextScreen) => {
@@ -137,10 +161,50 @@ export default function App() {
         <MateriScreen
           onBack={goBack}
           initialMateriId={selectedMateriId}
-          onStart={handleStart}
+          progressByMateri={readingProgress}
+          completedMateri={completedMateri}
+          onRead={handleRead}
+          onQuiz={handleQuiz}
         />
       );
       break;
+    case 'reader': {
+      const lesson = LESSON_CONTENT.find(
+        (item) => item.id === selectedMateriId,
+      );
+      screen = lesson ? (
+        <LessonReaderScreen
+          materi={lesson}
+          progress={readingProgress[lesson.id] || 0}
+          completed={completedMateri.includes(lesson.id)}
+          onBack={goBack}
+          onProgress={updateReadingProgress}
+          onComplete={finishReading}
+        />
+      ) : (
+        <View style={common.emptyBox}>
+          <Text style={common.emptyDesc}>Materi tidak ditemukan.</Text>
+        </View>
+      );
+      break;
+    }
+    case 'lesson-quiz':
+    case 'daily-quiz': {
+      const isDailyQuiz = activeTab === 'daily-quiz';
+      const lesson = LESSON_CONTENT.find(
+        (item) => item.id === selectedMateriId,
+      );
+      screen = (
+        <LessonQuizScreen
+          title={isDailyQuiz ? 'Kuis Harian' : `Kuis ${lesson?.title || ''}`}
+          questions={
+            isDailyQuiz ? dailyQuestions : lesson?.quiz || []
+          }
+          onBack={goBack}
+        />
+      );
+      break;
+    }
     case 'games':
       screen = (
         <MiniGameScreen
@@ -208,16 +272,17 @@ export default function App() {
       screen = (
         <HomeScreen
           lastOpened={lastOpened}
-          lastProgress={lastProgress}
+          lastProgress={readingProgress[lastOpenedId] || 0}
           onGoMateri={() => {
             setSelectedMateriId(null);
             navigateTo('materi');
           }}
           onContinue={() => {
             setSelectedMateriId(lastOpenedId);
-            navigateTo('materi');
+            navigateTo('reader');
           }}
           onGoScan={() => navigateTo('scan')}
+          onDailyQuiz={() => navigateTo('daily-quiz')}
         />
       );
   }

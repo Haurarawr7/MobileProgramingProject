@@ -101,6 +101,7 @@ export default function HomeScreen({
   onGoMateri,
   onContinue,
   onGoScan,
+  onDailyQuiz,
 }) {
   const [query, setQuery] = useState('');
 
@@ -146,7 +147,11 @@ export default function HomeScreen({
       <StreakBar total={STREAK_TOTAL} active={STREAK_ACTIVE} />
       <SectionHeader />
       {/* CTA Kuis */}
-      <TouchableOpacity style={common.quizButton} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={common.quizButton}
+        activeOpacity={0.85}
+        onPress={onDailyQuiz}
+      >
         <Text style={common.quizButtonText}>Kerjakan Kuis Harian</Text>
       </TouchableOpacity>
 
