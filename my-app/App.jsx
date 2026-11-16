@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StatusBar } from 'react-native';
+import { View, Text, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { TABS, MATERI } from './src/constants/data';
 import { LESSON_CONTENT, buildDailyQuiz } from './src/constants/lessonContent';
+import { VIDEO_LESSONS } from './src/constants/videoLessons';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
 import { getLastOpened } from './src/services/progress';
@@ -12,6 +13,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
 import LessonReaderScreen from './src/screens/LessonReaderScreen';
 import LessonQuizScreen from './src/screens/LessonQuizScreen';
+import VideoLessonScreen from './src/screens/VideoLessonScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
 import GameSetupScreen from './src/screens/GameSetupScreen';
 import GamePlayScreen from './src/screens/GamePlayScreen';
@@ -180,10 +182,31 @@ export default function App() {
           onBack={goBack}
           onProgress={updateReadingProgress}
           onComplete={finishReading}
+          onWatchVideo={(materiId) => {
+            setSelectedMateriId(materiId);
+            navigateTo('video-lesson');
+          }}
         />
       ) : (
         <View style={common.emptyBox}>
           <Text style={common.emptyDesc}>Materi tidak ditemukan.</Text>
+        </View>
+      );
+      break;
+    }
+    case 'video-lesson': {
+      const lesson = LESSON_CONTENT.find(
+        (item) => item.id === selectedMateriId,
+      );
+      screen = lesson && VIDEO_LESSONS[lesson.id] ? (
+        <VideoLessonScreen
+          materi={lesson}
+          video={VIDEO_LESSONS[lesson.id]}
+          onBack={goBack}
+        />
+      ) : (
+        <View style={common.emptyBox}>
+          <Text style={common.emptyDesc}>Video untuk materi ini belum tersedia.</Text>
         </View>
       );
       break;

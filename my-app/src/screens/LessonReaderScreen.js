@@ -66,6 +66,7 @@ export default function LessonReaderScreen({
   onBack,
   onProgress,
   onComplete,
+  onWatchVideo,
 }) {
   const [readingProgress, setReadingProgress] = useState(progress);
   const maxProgress = useRef(progress);
@@ -127,6 +128,15 @@ export default function LessonReaderScreen({
 
         <Text style={styles.title}>{materi.title}</Text>
         <Text style={styles.summary}>{materi.summary}</Text>
+
+        <TouchableOpacity
+          style={styles.videoButton}
+          activeOpacity={0.85}
+          onPress={() => onWatchVideo?.(materi.id)}
+        >
+          <Ionicons name="play-circle-outline" size={22} color={COLORS.ink} />
+          <Text style={styles.videoButtonText}>Tonton video pelajaran</Text>
+        </TouchableOpacity>
 
         {materi.sections.map((section) => (
           <View key={section.heading} style={styles.section}>
@@ -198,6 +208,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: COLORS.text,
     marginBottom: 24,
+  },
+  videoButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.sky,
+    marginBottom: 24,
+  },
+  videoButtonText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   section: { marginBottom: 20 },
   heading: {
