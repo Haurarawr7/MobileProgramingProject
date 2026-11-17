@@ -69,7 +69,10 @@ export default function LessonReaderScreen({
   onWatchVideo,
 }) {
   const [readingProgress, setReadingProgress] = useState(progress);
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
   const maxProgress = useRef(progress);
+  const scrollRef = useRef(null);
+  const sectionOffsets = useRef([]);
 
   useEffect(() => {
     maxProgress.current = Math.max(maxProgress.current, progress);
@@ -89,6 +92,22 @@ export default function LessonReaderScreen({
       setReadingProgress(nextProgress);
       onProgress?.(materi.id, nextProgress);
     }
+
+    const currentSectionIndex = sectionOffsets.current.reduce(
+      (activeIndex, offset, index) =>
+        offset !== undefined && contentOffset.y + 100 >= offset
+          ? index
+          : activeIndex,
+      0,
+    );
+    setActiveSectionIndex(currentSectionIndex);
+  };
+
+  const openSection = (index) => {
+    const sectionOffset = sectionOffsets.current[index];
+    if (sectionOffset === undefined) return;
+    scrollRef.current?.scrollTo({ y: sectionOffset, animated: true });
+    setActiveSectionIndex(index);
   };
 
   return (
@@ -113,6 +132,7 @@ export default function LessonReaderScreen({
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={100}
@@ -138,11 +158,63 @@ export default function LessonReaderScreen({
           <Text style={styles.videoButtonText}>Tonton video pelajaran</Text>
         </TouchableOpacity>
 
-        {materi.sections.map((section) => (
-          <View key={section.heading} style={styles.section}>
+        {materi.sections.length > 0 ? (
+          <View style={styles.subchapterBox}>
+            <Text style={styles.subchapterTitle}>Subbab materi</Text>
+            <Text style={styles.subchapterDescription}>
+              Pilih bagian untuk langsung membacanya.
+            </Text>
+            {materi.sections.map((section, index) => (
+              <TouchableOpacity
+                key={section.heading}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeSectionIndex === index }}
+                activeOpacity={0.85}
+                onPress={() => openSection(index)}
+                style={[
+                  styles.subchapterRow,
+                  index === activeSectionIndex && styles.subchapterRowActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.subchapterNumber,
+                    index === activeSectionIndex && styles.subchapterNumberActive,
+                  ]}
+                >
+                  <Text style={styles.subchapterNumberText}>{index + 1}</Text>
+                </View>
+                <Text
+                  style={styles.subchapterText}
+                  numberOfLines={2}
+                >
+                  {section.heading}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.ink}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+
+        {materi.sections.map((section, index) => (
+          <View
+            key={section.heading}
+            style={styles.section}
+            onLayout={(event) => {
+              sectionOffsets.current[index] = event.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={styles.sectionNumber}>Subbab {index + 1}</Text>
             <Text style={styles.heading}>{section.heading}</Text>
             {section.blocks.map((block, index) => (
-              <ContentBlock key={`${section.heading}-${index}`} block={block} />
+              <ContentBlock
+                key={`${section.heading}-${index}`}
+                block={block}
+              />
             ))}
           </View>
         ))}
@@ -227,7 +299,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink,
   },
+  subchapterBox: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
+    marginBottom: 24,
+  },
+  subchapterTitle: {
+    fontFamily: FONTS.sansSemi,
+    fontSize: 17,
+    color: COLORS.ink,
+  },
+  subchapterDescription: {
+    fontFamily: FONTS.sans,
+    fontSize: 12,
+    color: COLORS.text,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  subchapterRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 10,
+    borderRadius: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.sky,
+  },
+  subchapterRowActive: {
+    backgroundColor: COLORS.sky,
+  },
+  subchapterNumber: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+  subchapterNumberActive: {
+    backgroundColor: COLORS.yellow,
+  },
+  subchapterNumberText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 12,
+    color: COLORS.ink,
+  },
+  subchapterText: {
+    flex: 1,
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.ink,
+  },
   section: { marginBottom: 20 },
+  sectionNumber: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 11,
+    color: COLORS.blue,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
   heading: {
     fontFamily: FONTS.sansSemi,
     fontSize: 19,
