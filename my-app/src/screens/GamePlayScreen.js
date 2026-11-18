@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
@@ -53,11 +53,20 @@ function Result({ stats, onAgain, onDone }) {
   );
 }
 
-export default function GamePlayScreen({ config, onBack }) {
+export default function GamePlayScreen({ config, onBack, onReward }) {
   const materi = MATERI.find((m) => m.id === config?.materiId);
   const entry = config ? GAMES[config.materiId] : null;
   const [result, setResult] = useState(null);
   const [runKey, setRunKey] = useState(0);
+  const rewardSent = useRef(false);
+
+  const finishGame = (stats) => {
+    setResult(stats);
+    if (!rewardSent.current) {
+      rewardSent.current = true;
+      onReward?.();
+    }
+  };
 
   if (!materi || !entry) {
     return (
@@ -97,7 +106,7 @@ export default function GamePlayScreen({ config, onBack }) {
           ) : (
             <>
               <Text style={s.tip}>{tip}</Text>
-              <Game key={runKey} level={config.level} onFinish={setResult} />
+              <Game key={runKey} level={config.level} onFinish={finishGame} />
             </>
           )}
         </View>
