@@ -13,7 +13,7 @@ import { PROFILE, SUMMARY, BADGES, MENU } from '../constants/data';
 import common from '../styles/common';
 import SummaryCard from '../components/SummaryCard';
 
-export default function ProfileScreen({ onBack, onLogout, user }) {
+export default function ProfileScreen({ onBack, onLogout, user, points = 0 }) {
   const [notif, setNotif] = useState(true);
   const displayName = user?.name || PROFILE.name;
   const initial = displayName.charAt(0).toUpperCase();
@@ -59,8 +59,13 @@ export default function ProfileScreen({ onBack, onLogout, user }) {
         Ringkasan Belajar
       </Text>
       <View style={common.summaryRow}>
-        {SUMMARY.map((s) => (
-          <SummaryCard key={s.id} value={s.value} label={s.label} isProfile />
+        {SUMMARY.map((item) => (
+          <SummaryCard
+            key={item.id}
+            value={item.id === 's3' ? points.toLocaleString('id-ID') : item.value}
+            label={item.label}
+            isProfile
+          />
         ))}
       </View>
 

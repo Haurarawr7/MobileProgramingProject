@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { TABS, MATERI } from './src/constants/data';
 import { LESSON_CONTENT, buildDailyQuiz } from './src/constants/lessonContent';
 import { VIDEO_LESSONS } from './src/constants/videoLessons';
+import { GAME_COMPLETION_REWARD, STORY_EPISODE_COST } from './src/constants/gameEconomy';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
 import { getLastOpened } from './src/services/progress';
@@ -14,6 +15,8 @@ import MateriScreen from './src/screens/MateriScreen';
 import LessonReaderScreen from './src/screens/LessonReaderScreen';
 import LessonQuizScreen from './src/screens/LessonQuizScreen';
 import VideoLessonScreen from './src/screens/VideoLessonScreen';
+import PracticeGameScreen from './src/screens/PracticeGameScreen';
+import StoryChatScreen from './src/screens/StoryChatScreen';
 import MiniGameScreen from './src/screens/MiniGameScreen';
 import GameSetupScreen from './src/screens/GameSetupScreen';
 import GamePlayScreen from './src/screens/GamePlayScreen';
@@ -52,7 +55,10 @@ export default function App() {
   const [scannedForm, setScannedForm] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
+  const [selectedPracticeGameId, setSelectedPracticeGameId] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
+  const [wallet, setWallet] = useState({ points: 0, rewardedGames: [] });
+  const [storyUnlocked, setStoryUnlocked] = useState(false);
   const [readingProgress, setReadingProgress] = useState({});
   const [completedMateri, setCompletedMateri] = useState([]);
   const [dailyQuestions] = useState(() => buildDailyQuiz(5));
@@ -122,6 +128,28 @@ export default function App() {
     setLastOpenedId(materiId);
     setSelectedMateriId(materiId);
     navigateTo('lesson-quiz');
+  };
+
+  const awardGamePoints = (gameId) => {
+    setWallet((current) => {
+      if (current.rewardedGames.includes(gameId)) return current;
+      return {
+        points: current.points + GAME_COMPLETION_REWARD,
+        rewardedGames: [...current.rewardedGames, gameId],
+      };
+    });
+  };
+
+  const openStoryChat = () => {
+    if (!storyUnlocked) {
+      if (wallet.points < STORY_EPISODE_COST) return;
+      setWallet((current) => ({
+        ...current,
+        points: current.points - STORY_EPISODE_COST,
+      }));
+      setStoryUnlocked(true);
+    }
+    navigateTo('story-chat');
   };
 
   const navigateTo = (nextScreen) => {
@@ -232,10 +260,18 @@ export default function App() {
       screen = (
         <MiniGameScreen
           onBack={goBack}
-          onPlay={(game) => {
+          points={wallet.points}
+          storyUnlocked={storyUnlocked}
+          onReadMateri={handleRead}
+          onPlaySimulation={(game) => {
             setSelectedMateriId(game.materiId);
             navigateTo('game-setup');
           }}
+          onPlayPractice={(game) => {
+            setSelectedPracticeGameId(game.id);
+            navigateTo('practice-game');
+          }}
+          onOpenStory={openStoryChat}
         />
       );
       break;
@@ -254,23 +290,41 @@ export default function App() {
     case 'game-play': {
       const GameScreen = MINI_GAME_SCREENS[gameConfig?.materiId];
       screen = GameScreen ? (
-        <GameScreen level={gameConfig.level} onBack={goBack} />
+        <GameScreen
+          level={gameConfig.level}
+          onBack={goBack}
+          onReward={() => awardGamePoints(`simulation-${gameConfig.materiId}`)}
+        />
       ) : (
         <GamePlayScreen config={gameConfig} onBack={goBack} />
       );
       break;
     }
+    case 'practice-game':
+      screen = (
+        <PracticeGameScreen
+          key={selectedPracticeGameId}
+          gameId={selectedPracticeGameId}
+          onBack={goBack}
+          onReward={(gameId) => awardGamePoints(gameId)}
+        />
+      );
+      break;
+    case 'story-chat':
+      screen = <StoryChatScreen onBack={goBack} />;
+      break;
     case 'profile':
       screen = (
         <ProfileScreen
           onBack={goBack}
           onLogout={handleLogout}
           user={currentUser}
+          points={wallet.points}
         />
       );
       break;
     case 'leaderboard':
-      screen = <LeaderboardScreen user={currentUser} />;
+      screen = <LeaderboardScreen user={currentUser} points={wallet.points} />;
       break;
     case 'scan':
       screen = (
@@ -296,6 +350,7 @@ export default function App() {
         <HomeScreen
           lastOpened={lastOpened}
           lastProgress={readingProgress[lastOpenedId] || 0}
+          points={wallet.points}
           onGoMateri={() => {
             setSelectedMateriId(null);
             navigateTo('materi');

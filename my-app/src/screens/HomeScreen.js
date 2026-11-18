@@ -102,6 +102,7 @@ export default function HomeScreen({
   onContinue,
   onGoScan,
   onDailyQuiz,
+  points = 0,
 }) {
   const [query, setQuery] = useState('');
 
@@ -140,8 +141,12 @@ export default function HomeScreen({
       </View>
 
       <View style={common.summaryRow}>
-        {SUMMARY.map((s) => (
-          <SummaryCard key={s.id} value={s.value} label={s.label} />
+        {SUMMARY.map((item) => (
+          <SummaryCard
+            key={item.id}
+            value={item.id === 's3' ? points.toLocaleString('id-ID') : item.value}
+            label={item.label}
+          />
         ))}
       </View>
       <StreakBar total={STREAK_TOTAL} active={STREAK_ACTIVE} />

@@ -103,11 +103,18 @@ function RankingRow({ player, rank, isCurrentUser }) {
   );
 }
 
-export default function LeaderboardScreen({ user }) {
+export default function LeaderboardScreen({ user, points = 0 }) {
   const [period, setPeriod] = useState('Minggu ini');
-  const players = LEADERBOARDS[period].map((player) =>
-    player.id === 'you' && user?.name ? { ...player, name: user.name } : player,
-  );
+  const players = LEADERBOARDS[period]
+    .map((player) => {
+      if (player.id !== 'you') return player;
+      return {
+        ...player,
+        name: user?.name || player.name,
+        points,
+      };
+    })
+    .sort((first, second) => second.points - first.points);
   const podium = players.slice(0, 3);
   const currentUserRank = players.findIndex((player) => player.id === 'you') + 1;
   const currentUser = players.find((player) => player.id === 'you');
