@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -12,12 +12,25 @@ import { FONTS } from '../constants/fonts';
 import { shuffle } from '../constants/lessonContent';
 import common from '../styles/common';
 
-export default function LessonQuizScreen({ title, questions = [], onBack }) {
+export default function LessonQuizScreen({
+  title,
+  questions = [],
+  onBack,
+  onFinished,
+}) {
   const [attempt, setAttempt] = useState(0);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const rewardSent = useRef(false);
+
+  useEffect(() => {
+    if (finished && !rewardSent.current) {
+      rewardSent.current = true;
+      onFinished?.(correctCount);
+    }
+  }, [correctCount, finished, onFinished]);
 
   const preparedQuestions = useMemo(
     () =>
