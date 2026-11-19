@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StatusBar } from 'react-native';
+import { Alert, ActivityIndicator, View, Text, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { TABS, MATERI } from './src/constants/data';
 import { LESSON_CONTENT, buildDailyQuiz } from './src/constants/lessonContent';
 import { VIDEO_LESSONS } from './src/constants/videoLessons';
 import { GAME_COMPLETION_REWARD, STORY_EPISODE_COST } from './src/constants/gameEconomy';
+import { COLORS } from './src/constants/colors';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
 import { getLastOpened } from './src/services/progress';
@@ -47,11 +48,9 @@ const MINI_GAME_SCREENS = {
   m6: MiniGame6,
 };
 
-// const AUTH_ENABLED = !__DEV__;
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [navigationStack, setNavigationStack] = useState(['home']);
+  const [navigationStack, setNavigationStack] = useState(['auth-loading']);
   const [scannedForm, setScannedForm] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
@@ -67,23 +66,22 @@ export default function App() {
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
 
   useEffect(() => {
-    /*
     getSavedUser().then((savedUser) => {
       if (savedUser) {
         setCurrentUser(savedUser);
         setNavigationStack(['home']);
+        getLastOpened()
+          .then((last) => {
+            if (last) setLastOpenedId(last.materiId);
+          })
+          .catch((error) => console.warn('Gagal memuat materi terakhir', error));
       } else {
         setNavigationStack(['login']);
       }
+    }).catch((error) => {
+      console.warn('Gagal memulihkan sesi pengguna', error);
+      setNavigationStack(['login']);
     });
-    */
-
-    getLastOpened()
-      .then((last) => {
-        if (!last) return;
-        setLastOpenedId(last.materiId);
-      })
-      .catch((e) => console.warn('Gagal memuat materi terakhir', e));
   }, []);
 
   if (!fontsLoaded) return null;
@@ -91,15 +89,21 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setNavigationStack(['home']);
+    getLastOpened()
+      .then((last) => {
+        if (last) setLastOpenedId(last.materiId);
+      })
+      .catch((error) => console.warn('Gagal memuat materi terakhir', error));
   };
 
   const handleLogout = async () => {
-    setNavigationStack(['home']);
-    /*
-    await logoutUser();
+    const result = await logoutUser();
+    if (!result.success) {
+      Alert.alert('Gagal Keluar', result.error || 'Silakan coba lagi.');
+      return;
+    }
     setCurrentUser(null);
     setNavigationStack(['login']);
-    */
   };
 
   const handleRead = (materi) => {
@@ -161,7 +165,6 @@ export default function App() {
     setNavigationStack((prev) => {
       if (prev.length <= 1) {
         return ['home'];
-        // return currentUser ? ['home'] : ['login'];
       }
       return prev.slice(0, -1);
     });
@@ -169,6 +172,14 @@ export default function App() {
 
   let screen;
   switch (activeTab) {
+    case 'auth-loading':
+      screen = (
+        <View style={common.emptyBox}>
+          <ActivityIndicator size="large" color={COLORS.blue} />
+          <Text style={common.emptyDesc}>Memeriksa sesi akun...</Text>
+        </View>
+      );
+      break;
     case 'login':
       screen = (
         <LoginScreen

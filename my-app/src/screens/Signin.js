@@ -44,10 +44,19 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   const [request, response, promptAsync] = Google.useAuthRequest(GOOGLE_CLIENT_IDS);
 
   useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token, authentication } = response.params;
-      handleGoogleResponse(id_token || authentication?.idToken, authentication?.accessToken);
+    if (!response) return;
+    if (response.type !== 'success') {
+      setGoogleLoading(false);
+      return;
     }
+
+    const idToken = response.params?.id_token || response.authentication?.idToken;
+    if (!idToken) {
+      setGoogleLoading(false);
+      Alert.alert('Gagal Daftar dengan Google', 'Google tidak mengembalikan token autentikasi.');
+      return;
+    }
+    handleGoogleResponse(idToken);
   }, [response]);
 
   const handleGoogleResponse = async (idToken, accessToken) => {
@@ -73,19 +82,26 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   };
 
   const handleGooglePress = async () => {
-    if (request && googleClientId) {
-      promptAsync();
-    } else {
-      // Fallback cepat (Demo) jika Client ID belum dipasang di .env
-      setGoogleLoading(true);
-      const result = await loginWithGoogleCredential(null, {
-        name: 'Pengguna Google Baru',
-        email: 'user.google@gmail.com',
-      });
+    if (!googleClientId) {
+      Alert.alert(
+        'Google belum dikonfigurasi',
+        `Tambahkan EXPO_PUBLIC_GOOGLE_${Platform.OS.toUpperCase()}_CLIENT_ID pada file .env untuk mengaktifkan Google Sign-In.`,
+      );
+      return;
+    }
+    if (!request) {
+      Alert.alert('Google belum siap', 'Tunggu sebentar, lalu coba lagi.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const result = await promptAsync();
+      if (result?.type !== 'success') setGoogleLoading(false);
+    } catch (error) {
       setGoogleLoading(false);
-      if (result.success) {
-        onRegisterSuccess?.(result.user);
-      }
+      console.warn('Google authentication prompt failed', error);
+      Alert.alert('Gagal Daftar dengan Google', 'Silakan coba lagi.');
     }
   };
 
@@ -116,17 +132,22 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
     }
 
     setLoading(true);
-    const result = await registerWithEmail(name, email, password);
-    setLoading(false);
-
-    if (result.success) {
-      Alert.alert(
-        'Pendaftaran Berhasil',
-        `Selamat datang di Logiterm, ${result.user.name}!`,
-        [{ text: 'Lanjutkan', onPress: () => onRegisterSuccess?.(result.user) }]
-      );
-    } else {
-      Alert.alert('Pendaftaran Gagal', result.error || 'Terjadi kesalahan saat membuat akun.');
+    try {
+      const result = await registerWithEmail(name, email, password);
+      if (result.success) {
+        Alert.alert(
+          'Pendaftaran Berhasil',
+          `Selamat datang di Logiterm, ${result.user.name}!`,
+          [{ text: 'Lanjutkan', onPress: () => onRegisterSuccess?.(result.user) }]
+        );
+      } else {
+        Alert.alert('Pendaftaran Gagal', result.error || 'Terjadi kesalahan saat membuat akun.');
+      }
+    } catch (error) {
+      console.warn('Email registration failed', error);
+      Alert.alert('Pendaftaran Gagal', 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
     }
   };
 

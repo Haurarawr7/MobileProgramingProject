@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithCredential,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -18,8 +19,41 @@ const USER_SESSION_KEY = '@user_session';
  */
 export async function getSavedUser() {
   try {
-    const raw = await AsyncStorage.getItem(USER_SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!isFirebaseConfigured) {
+      await AsyncStorage.removeItem(USER_SESSION_KEY);
+      return null;
+    }
+
+    await new Promise((resolve, reject) => {
+      let unsubscribe;
+      unsubscribe = onAuthStateChanged(
+        auth,
+        () => {
+          unsubscribe?.();
+          resolve();
+        },
+        (error) => {
+          unsubscribe?.();
+          reject(error);
+        },
+      );
+    });
+
+    const user = auth.currentUser;
+    if (!user) {
+      await AsyncStorage.removeItem(USER_SESSION_KEY);
+      return null;
+    }
+
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || user.email?.split('@')[0] || 'Tamu',
+      photoURL: user.photoURL,
+      isGuest: user.isAnonymous,
+    };
+    await saveUserSession(userData);
+    return userData;
   } catch (err) {
     console.warn('Gagal membaca sesi pengguna:', err);
     return null;
@@ -47,32 +81,24 @@ export async function saveUserSession(userData) {
 export async function loginWithEmail(email, password) {
   const cleanEmail = email.trim().toLowerCase();
 
-  if (isFirebaseConfigured) {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
-      const user = userCredential.user;
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName || user.email.split('@')[0],
-        isGuest: false,
-      };
-      await saveUserSession(userData);
-      return { success: true, user: userData };
-    } catch (error) {
-      return { success: false, error: formatAuthError(error.code) };
-    }
+  if (!isFirebaseConfigured) {
+    return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
 
-  // Fallback mode lokal jika Firebase belum dikonfigurasi
-  const localUser = {
-    uid: 'local_user_' + Date.now(),
-    email: cleanEmail,
-    name: cleanEmail.split('@')[0],
-    isGuest: false,
-  };
-  await saveUserSession(localUser);
-  return { success: true, user: localUser };
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    const user = userCredential.user;
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || user.email.split('@')[0],
+      isGuest: false,
+    };
+    await saveUserSession(userData);
+    return { success: true, user: userData };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
 }
 
 /**
@@ -82,104 +108,82 @@ export async function registerWithEmail(name, email, password) {
   const cleanEmail = email.trim().toLowerCase();
   const cleanName = name.trim();
 
-  if (isFirebaseConfigured) {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      const user = userCredential.user;
-
-      if (cleanName) {
-        await updateProfile(user, { displayName: cleanName });
-      }
-
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        name: cleanName || user.email.split('@')[0],
-        isGuest: false,
-      };
-      await saveUserSession(userData);
-      return { success: true, user: userData };
-    } catch (error) {
-      return { success: false, error: formatAuthError(error.code) };
-    }
+  if (!isFirebaseConfigured) {
+    return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
 
-  // Fallback mode lokal jika Firebase belum dikonfigurasi
-  const localUser = {
-    uid: 'local_user_' + Date.now(),
-    email: cleanEmail,
-    name: cleanName || cleanEmail.split('@')[0],
-    isGuest: false,
-  };
-  await saveUserSession(localUser);
-  return { success: true, user: localUser };
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+    const user = userCredential.user;
+
+    if (cleanName) {
+      await updateProfile(user, { displayName: cleanName });
+    }
+
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name: cleanName || user.email.split('@')[0],
+      isGuest: false,
+    };
+    await saveUserSession(userData);
+    return { success: true, user: userData };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
 }
 
 /**
  * Masuk sebagai Tamu (Guest Mode).
  */
 export async function loginAsGuest() {
-  if (isFirebaseConfigured) {
-    try {
-      const userCredential = await signInAnonymously(auth);
-      const user = userCredential.user;
-      const userData = {
-        uid: user.uid,
-        email: null,
-        name: 'Tamu',
-        isGuest: true,
-      };
-      await saveUserSession(userData);
-      return { success: true, user: userData };
-    } catch (error) {
-      console.warn('Anonymous login error:', error);
-    }
+  if (!isFirebaseConfigured) {
+    return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
 
-  const guestUser = {
-    uid: 'guest_' + Math.random().toString(36).substring(2, 9),
-    email: null,
-    name: 'Tamu',
-    isGuest: true,
-  };
-  await saveUserSession(guestUser);
-  return { success: true, user: guestUser };
+  try {
+    const userCredential = await signInAnonymously(auth);
+    const user = userCredential.user;
+    const userData = {
+      uid: user.uid,
+      email: null,
+      name: 'Tamu',
+      isGuest: true,
+    };
+    await saveUserSession(userData);
+    return { success: true, user: userData };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
 }
 
 /**
  * Login dengan Akun Google (Google Sign-In).
  */
 export async function loginWithGoogleCredential(idToken, userInfo = null) {
-  if (isFirebaseConfigured && idToken) {
-    try {
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-      const user = userCredential.user;
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName || userInfo?.name || user.email?.split('@')[0] || 'Pengguna Google',
-        photoURL: user.photoURL || userInfo?.picture,
-        isGuest: false,
-      };
-      await saveUserSession(userData);
-      return { success: true, user: userData };
-    } catch (error) {
-      console.warn('Firebase Google Sign-In error:', error);
-      return { success: false, error: formatAuthError(error.code) };
-    }
+  if (!isFirebaseConfigured) {
+    return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
+  }
+  if (!idToken) {
+    return { success: false, error: 'Google tidak mengembalikan token autentikasi.' };
   }
 
-  // Fallback jika belum memasukkan idToken atau Firebase belum dikonfigurasi
-  const localGoogleUser = {
-    uid: 'google_user_' + Date.now(),
-    email: userInfo?.email || 'user.google@gmail.com',
-    name: userInfo?.name || 'Siswa Google',
-    photoURL: userInfo?.picture || null,
-    isGuest: false,
-  };
-  await saveUserSession(localGoogleUser);
-  return { success: true, user: localGoogleUser };
+  try {
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    const user = userCredential.user;
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || userInfo?.name || user.email?.split('@')[0] || 'Pengguna Google',
+      photoURL: user.photoURL || userInfo?.picture,
+      isGuest: false,
+    };
+    await saveUserSession(userData);
+    return { success: true, user: userData };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
 }
 
 /**
@@ -187,15 +191,15 @@ export async function loginWithGoogleCredential(idToken, userInfo = null) {
  */
 export async function resetPassword(email) {
   const cleanEmail = email.trim().toLowerCase();
-  if (isFirebaseConfigured) {
-    try {
-      await sendPasswordResetEmail(auth, cleanEmail);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: formatAuthError(error.code) };
-    }
+  if (!isFirebaseConfigured) {
+    return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
-  return { success: true, message: 'Tautan reset sandi telah disimulasikan.' };
+  try {
+    await sendPasswordResetEmail(auth, cleanEmail);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
 }
 
 /**
@@ -205,11 +209,12 @@ export async function logoutUser() {
   if (isFirebaseConfigured) {
     try {
       await signOut(auth);
-    } catch (e) {
-      console.warn('Firebase signOut error:', e);
+    } catch (error) {
+      return { success: false, error: formatAuthError(error.code) };
     }
   }
   await saveUserSession(null);
+  return { success: true };
 }
 
 /**
@@ -230,6 +235,15 @@ function formatAuthError(errorCode) {
       return 'Email ini sudah terdaftar. Silakan masuk.';
     case 'auth/weak-password':
       return 'Kata sandi terlalu lemah. Gunakan minimal 8 karakter.';
+    case 'auth/operation-not-allowed':
+      return 'Metode masuk ini belum diaktifkan di Firebase Authentication.';
+    case 'auth/invalid-api-key':
+    case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
+      return 'Konfigurasi Firebase tidak valid. Periksa Firebase Console.';
+    case 'auth/app-not-authorized':
+      return 'Aplikasi ini belum diizinkan di Firebase Console.';
+    case 'auth/unauthorized-domain':
+      return 'Domain aplikasi belum diizinkan untuk autentikasi Firebase.';
     case 'auth/network-request-failed':
       return 'Koneksi internet bermasalah. Periksa jaringan Anda.';
     case 'auth/too-many-requests':
@@ -238,4 +252,3 @@ function formatAuthError(errorCode) {
       return 'Terjadi kesalahan autentikasi. Silakan coba lagi.';
   }
 }
-

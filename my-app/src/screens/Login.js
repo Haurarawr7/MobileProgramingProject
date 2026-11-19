@@ -47,10 +47,19 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   const [request, response, promptAsync] = Google.useAuthRequest(GOOGLE_CLIENT_IDS);
 
   useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token, authentication } = response.params;
-      handleGoogleResponse(id_token || authentication?.idToken, authentication?.accessToken);
+    if (!response) return;
+    if (response.type !== 'success') {
+      setGoogleLoading(false);
+      return;
     }
+
+    const idToken = response.params?.id_token || response.authentication?.idToken;
+    if (!idToken) {
+      setGoogleLoading(false);
+      Alert.alert('Gagal Masuk dengan Google', 'Google tidak mengembalikan token autentikasi.');
+      return;
+    }
+    handleGoogleResponse(idToken);
   }, [response]);
 
   const handleGoogleResponse = async (idToken, accessToken) => {
@@ -76,19 +85,26 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   };
 
   const handleGooglePress = async () => {
-    if (request && googleClientId) {
-      promptAsync();
-    } else {
-      // Fallback cepat (Demo) jika Client ID belum dipasang di .env
-      setGoogleLoading(true);
-      const result = await loginWithGoogleCredential(null, {
-        name: 'Pengguna Google',
-        email: 'user.google@gmail.com',
-      });
+    if (!googleClientId) {
+      Alert.alert(
+        'Google belum dikonfigurasi',
+        `Tambahkan EXPO_PUBLIC_GOOGLE_${Platform.OS.toUpperCase()}_CLIENT_ID pada file .env untuk mengaktifkan Google Sign-In.`,
+      );
+      return;
+    }
+    if (!request) {
+      Alert.alert('Google belum siap', 'Tunggu sebentar, lalu coba lagi.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const result = await promptAsync();
+      if (result?.type !== 'success') setGoogleLoading(false);
+    } catch (error) {
       setGoogleLoading(false);
-      if (result.success) {
-        onLoginSuccess?.(result.user);
-      }
+      console.warn('Google authentication prompt failed', error);
+      Alert.alert('Gagal Masuk dengan Google', 'Silakan coba lagi.');
     }
   };
 
@@ -103,22 +119,35 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
     }
 
     setLoading(true);
-    const result = await loginWithEmail(email, password);
-    setLoading(false);
-
-    if (result.success) {
-      onLoginSuccess?.(result.user);
-    } else {
-      Alert.alert('Gagal Masuk', result.error || 'Email atau kata sandi tidak cocok.');
+    try {
+      const result = await loginWithEmail(email, password);
+      if (result.success) {
+        onLoginSuccess?.(result.user);
+      } else {
+        Alert.alert('Gagal Masuk', result.error || 'Email atau kata sandi tidak cocok.');
+      }
+    } catch (error) {
+      console.warn('Email sign-in failed', error);
+      Alert.alert('Gagal Masuk', 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGuest = async () => {
     setGuestLoading(true);
-    const result = await loginAsGuest();
-    setGuestLoading(false);
-    if (result.success) {
-      onLoginSuccess?.(result.user);
+    try {
+      const result = await loginAsGuest();
+      if (result.success) {
+        onLoginSuccess?.(result.user);
+      } else {
+        Alert.alert('Gagal Masuk sebagai Tamu', result.error || 'Silakan coba lagi.');
+      }
+    } catch (error) {
+      console.warn('Guest sign-in failed', error);
+      Alert.alert('Gagal Masuk sebagai Tamu', 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setGuestLoading(false);
     }
   };
 

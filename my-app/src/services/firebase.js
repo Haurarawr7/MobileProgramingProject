@@ -15,11 +15,12 @@ const firebaseConfig = {
   measurementId: "G-Z2VEJRVC5H"
 };
 
-export const isFirebaseConfigured =
+export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
-  firebaseConfig.apiKey !== 'AIzaSyCwJjSDF69GxVWpCm1yLhJqS6bxf0pw0r4' &&
-  firebaseConfig.projectId &&
-  firebaseConfig.projectId !== 'logiterm-mobile';
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId,
+);
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
@@ -35,4 +36,3 @@ try {
 const db = getFirestore(app);
 
 export { app, auth, db };
-
