@@ -30,6 +30,7 @@ export async function syncUserProfile(user) {
       school: '',
       grade: '',
       points: 0,
+      quizCount: 0,
       rewardedActivities: [],
       unlockedStories: [],
       createdAt: serverTimestamp(),
@@ -47,9 +48,12 @@ export async function updateUserProfile(uid, profile) {
     name: profile.name.trim(),
     school: profile.school.trim(),
     grade: profile.grade.trim(),
-    updatedAt: serverTimestamp(),
   };
-  await setDoc(userDocument(uid), updatedProfile, { merge: true });
+  await setDoc(
+    userDocument(uid),
+    { ...updatedProfile, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
   return updatedProfile;
 }
 
@@ -162,6 +166,9 @@ export async function recordLearningActivity(uid, {
       accountRef,
       {
         points,
+        ...(result.kind === 'quiz'
+          ? { quizCount: (account.quizCount || 0) + 1 }
+          : {}),
         rewardedActivities: shouldReward
           ? [...rewardedActivities, rewardKey]
           : rewardedActivities,

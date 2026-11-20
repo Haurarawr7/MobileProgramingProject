@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Alert, ActivityIndicator, View, Text, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,7 +9,12 @@ import { GAME_COMPLETION_REWARD, STORY_EPISODE_COST } from './src/constants/game
 import { COLORS } from './src/constants/colors';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
-import { getLastOpened } from './src/services/progress';
+import { saveOpened, saveProgress } from './src/services/progress';
+import {
+  recordLearningActivity,
+  subscribeUserData,
+  unlockStoryWithPoints,
+} from './src/services/userData';
 
 import HomeScreen from './src/screens/HomeScreen';
 import MateriScreen from './src/screens/MateriScreen';
@@ -34,7 +39,11 @@ import DynamicFormScreen from './src/screens/DynamicFormScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
 import LoginScreen from './src/screens/Login';
 import SigninScreen from './src/screens/Signin';
-import { getSavedUser, logoutUser } from './src/services/auth';
+import {
+  getSavedUser,
+  logoutUser,
+  saveAuthenticatedProfile,
+} from './src/services/auth';
 import { useFonts } from 'expo-font';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold,} from '@expo-google-fonts/poppins';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
@@ -56,12 +65,24 @@ export default function App() {
   const [selectedMateriId, setSelectedMateriId] = useState(null);
   const [selectedPracticeGameId, setSelectedPracticeGameId] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
-  const [wallet, setWallet] = useState({ points: 0, rewardedGames: [] });
-  const [storyUnlocked, setStoryUnlocked] = useState(false);
+  const [userData, setUserData] = useState(null);
   const [readingProgress, setReadingProgress] = useState({});
   const [completedMateri, setCompletedMateri] = useState([]);
+  const lastSavedProgress = useRef({});
   const [dailyQuestions] = useState(() => buildDailyQuiz(5));
   const lastOpened = MATERI.find((m) => m.id === lastOpenedId) ?? null;
+  const points = userData?.points || 0;
+  const storyUnlocked = userData?.unlockedStories?.includes('story-binary-search') || false;
+  const learningStats = {
+    completedLessons: completedMateri.length,
+    quizCount: userData?.quizCount || 0,
+    points,
+    summary: [
+      { id: 'lessons', value: completedMateri.length, label: 'Materi' },
+      { id: 'quizzes', value: userData?.quizCount || 0, label: 'Kuis' },
+      { id: 'points', value: points, label: 'Poin' },
+    ],
+  };
   const activeTab = navigationStack[navigationStack.length - 1];
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
 
@@ -70,11 +91,6 @@ export default function App() {
       if (savedUser) {
         setCurrentUser(savedUser);
         setNavigationStack(['home']);
-        getLastOpened()
-          .then((last) => {
-            if (last) setLastOpenedId(last.materiId);
-          })
-          .catch((error) => console.warn('Gagal memuat materi terakhir', error));
       } else {
         setNavigationStack(['login']);
       }
@@ -84,16 +100,48 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    const uid = currentUser?.uid;
+    if (!uid) {
+      setUserData(null);
+      setReadingProgress({});
+      setCompletedMateri([]);
+      setLastOpenedId(null);
+      lastSavedProgress.current = {};
+      return undefined;
+    }
+
+    setUserData(null);
+    setReadingProgress({});
+    setCompletedMateri([]);
+    lastSavedProgress.current = {};
+
+    return subscribeUserData(
+      uid,
+      (data) => {
+        setUserData(data);
+        setReadingProgress(data.readingProgress);
+        setCompletedMateri(data.completedMateri);
+        setLastOpenedId(data.lastOpenedId);
+        setCurrentUser((user) =>
+          user?.uid === uid ? { ...user, ...data } : user,
+        );
+      },
+      (error) => {
+        console.warn('Gagal menyinkronkan data akun:', error);
+        Alert.alert(
+          'Gagal menyinkronkan data',
+          'Periksa koneksi internet dan coba buka kembali aplikasi.',
+        );
+      },
+    );
+  }, [currentUser?.uid]);
+
   if (!fontsLoaded) return null;
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setNavigationStack(['home']);
-    getLastOpened()
-      .then((last) => {
-        if (last) setLastOpenedId(last.materiId);
-      })
-      .catch((error) => console.warn('Gagal memuat materi terakhir', error));
   };
 
   const handleLogout = async () => {
@@ -103,12 +151,21 @@ export default function App() {
       return;
     }
     setCurrentUser(null);
+    setUserData(null);
+    setReadingProgress({});
+    setCompletedMateri([]);
+    setLastOpenedId(null);
+    setSelectedMateriId(null);
     setNavigationStack(['login']);
   };
 
   const handleRead = (materi) => {
     setLastOpenedId(materi.id);
     setSelectedMateriId(materi.id);
+    saveOpened(materi.id, currentUser?.uid).catch((error) => {
+      console.warn('Gagal menyimpan materi yang dibuka:', error);
+      Alert.alert('Gagal menyimpan progres', 'Periksa koneksi internet lalu coba lagi.');
+    });
     navigateTo('reader');
   };
 
@@ -122,38 +179,122 @@ export default function App() {
       ...current,
       [materiId]: Math.max(current[materiId] || 0, progress),
     }));
+    const lastSaved = lastSavedProgress.current[materiId] || 0;
+    if (progress - lastSaved >= 0.05) {
+      lastSavedProgress.current[materiId] = progress;
+      saveProgress(materiId, progress, null, currentUser?.uid).catch((error) => {
+        console.warn('Gagal menyimpan progres materi:', error);
+        Alert.alert('Gagal menyimpan progres', 'Periksa koneksi internet lalu coba lagi.');
+      });
+    }
   };
 
   const finishReading = (materiId) => {
+    lastSavedProgress.current[materiId] = 1;
     setReadingProgress((current) => ({ ...current, [materiId]: 1 }));
     setCompletedMateri((current) =>
       current.includes(materiId) ? current : [...current, materiId],
     );
     setLastOpenedId(materiId);
     setSelectedMateriId(materiId);
+    saveProgress(materiId, 1, true, currentUser?.uid).catch((error) => {
+      console.warn('Gagal menyelesaikan progres materi:', error);
+      Alert.alert('Gagal menyimpan progres', 'Periksa koneksi internet lalu coba lagi.');
+    });
+    recordLearningActivity(currentUser.uid, {
+      activityId: `lesson_completed_${materiId}`,
+      result: {
+        kind: 'lesson',
+        icon: 'book-outline',
+        title: 'Materi selesai',
+        subtitle: MATERI.find((item) => item.id === materiId)?.title || materiId,
+      },
+    }).catch((error) => {
+      console.warn('Gagal menyimpan aktivitas materi:', error);
+    });
     navigateTo('lesson-quiz');
   };
 
-  const awardGamePoints = (gameId) => {
-    setWallet((current) => {
-      if (current.rewardedGames.includes(gameId)) return current;
-      return {
-        points: current.points + GAME_COMPLETION_REWARD,
-        rewardedGames: [...current.rewardedGames, gameId],
-      };
+  const handleQuizFinished = (quizId, title, result) => {
+    recordLearningActivity(currentUser.uid, {
+      activityId: result.activityId,
+      result: {
+        kind: 'quiz',
+        icon: 'help-circle-outline',
+        title,
+        subtitle: `${result.correctCount} dari ${result.totalQuestions} benar`,
+        correctCount: result.correctCount,
+        totalQuestions: result.totalQuestions,
+        quizId,
+      },
+    }).catch((error) => {
+      console.warn('Gagal menyimpan hasil kuis:', error);
+      Alert.alert('Gagal menyimpan hasil', 'Hasil kuis belum tersinkron ke akun.');
     });
   };
 
-  const openStoryChat = () => {
-    if (!storyUnlocked) {
-      if (wallet.points < STORY_EPISODE_COST) return;
-      setWallet((current) => ({
-        ...current,
-        points: current.points - STORY_EPISODE_COST,
-      }));
-      setStoryUnlocked(true);
+  const awardGamePoints = async (gameId, result = {}) => {
+    const practice = gameId === 'flashcards' || gameId === 'matching' || gameId === 'speed-quiz';
+    const rewardKey = practice
+      ? `practice-${gameId}`
+      : gameId.startsWith('simulation-')
+        ? gameId
+        : `simulation-${gameId}`;
+    try {
+      await recordLearningActivity(currentUser.uid, {
+        activityId: `${rewardKey}_${Date.now()}`,
+        rewardKey,
+        rewardPoints: GAME_COMPLETION_REWARD,
+        result: {
+          ...result,
+          kind: gameId === 'speed-quiz' ? 'quiz' : practice ? 'practice-game' : 'simulation',
+          icon: 'game-controller-outline',
+          title: practice ? 'Game latihan selesai' : 'Simulasi selesai',
+          subtitle: `${gameId} · ${result.correct ?? result.correctCount ?? 0} benar`,
+        },
+      });
+    } catch (error) {
+      console.warn('Gagal menyimpan hasil game:', error);
+      Alert.alert('Gagal menyimpan hasil', 'Poin game belum tersinkron ke akun.');
     }
-    navigateTo('story-chat');
+  };
+
+  const openStoryChat = async () => {
+    try {
+      const result = await unlockStoryWithPoints(
+        currentUser.uid,
+        'story-binary-search',
+        STORY_EPISODE_COST,
+      );
+      if (!result.success) {
+        Alert.alert('Poin belum cukup', `Cerita ini memerlukan ${STORY_EPISODE_COST} poin.`);
+        return;
+      }
+      navigateTo('story-chat');
+    } catch (error) {
+      console.warn('Gagal membuka cerita:', error);
+      Alert.alert('Gagal membuka cerita', 'Periksa koneksi internet lalu coba lagi.');
+    }
+  };
+
+  const handleStoryComplete = () => {
+    recordLearningActivity(currentUser.uid, {
+      activityId: 'story_completed_binary-search',
+      result: {
+        kind: 'story',
+        icon: 'chatbubbles-outline',
+        title: 'Cerita selesai',
+        subtitle: 'Misi Mencari 23',
+      },
+    }).catch((error) => {
+      console.warn('Gagal menyimpan aktivitas cerita:', error);
+    });
+  };
+
+  const handleProfileSave = async (profile) => {
+    const result = await saveAuthenticatedProfile(profile);
+    if (result.success) setCurrentUser((user) => ({ ...user, ...result.user }));
+    return result;
   };
 
   const navigateTo = (nextScreen) => {
@@ -259,10 +400,18 @@ export default function App() {
       screen = (
         <LessonQuizScreen
           title={isDailyQuiz ? 'Kuis Harian' : `Kuis ${lesson?.title || ''}`}
+          quizId={isDailyQuiz ? 'daily' : selectedMateriId || 'lesson'}
           questions={
             isDailyQuiz ? dailyQuestions : lesson?.quiz || []
           }
           onBack={goBack}
+          onFinished={(result) =>
+            handleQuizFinished(
+              isDailyQuiz ? 'daily' : selectedMateriId || 'lesson',
+              isDailyQuiz ? 'Kuis harian selesai' : `Kuis ${lesson?.title || ''} selesai`,
+              result,
+            )
+          }
         />
       );
       break;
@@ -271,7 +420,7 @@ export default function App() {
       screen = (
         <MiniGameScreen
           onBack={goBack}
-          points={wallet.points}
+          points={points}
           storyUnlocked={storyUnlocked}
           onReadMateri={handleRead}
           onPlaySimulation={(game) => {
@@ -304,10 +453,14 @@ export default function App() {
         <GameScreen
           level={gameConfig.level}
           onBack={goBack}
-          onReward={() => awardGamePoints(`simulation-${gameConfig.materiId}`)}
+          onReward={(result) => awardGamePoints(`simulation-${gameConfig.materiId}`, result)}
         />
       ) : (
-        <GamePlayScreen config={gameConfig} onBack={goBack} />
+        <GamePlayScreen
+          config={gameConfig}
+          onBack={goBack}
+          onReward={(result) => awardGamePoints(`simulation-${gameConfig?.materiId}`, result)}
+        />
       );
       break;
     }
@@ -317,12 +470,12 @@ export default function App() {
           key={selectedPracticeGameId}
           gameId={selectedPracticeGameId}
           onBack={goBack}
-          onReward={(gameId) => awardGamePoints(gameId)}
+          onReward={(gameId, result) => awardGamePoints(gameId, result)}
         />
       );
       break;
     case 'story-chat':
-      screen = <StoryChatScreen onBack={goBack} />;
+      screen = <StoryChatScreen onBack={goBack} onComplete={handleStoryComplete} />;
       break;
     case 'profile':
       screen = (
@@ -330,12 +483,14 @@ export default function App() {
           onBack={goBack}
           onLogout={handleLogout}
           user={currentUser}
-          points={wallet.points}
+          points={points}
+          learningStats={learningStats}
+          onSaveProfile={handleProfileSave}
         />
       );
       break;
     case 'leaderboard':
-      screen = <LeaderboardScreen user={currentUser} points={wallet.points} />;
+      screen = <LeaderboardScreen user={currentUser} points={points} />;
       break;
     case 'scan':
       screen = (
@@ -361,7 +516,10 @@ export default function App() {
         <HomeScreen
           lastOpened={lastOpened}
           lastProgress={readingProgress[lastOpenedId] || 0}
-          points={wallet.points}
+          learningStats={learningStats}
+          activities={userData?.activities || []}
+          userName={currentUser?.name || 'Siswa'}
+          points={points}
           onGoMateri={() => {
             setSelectedMateriId(null);
             navigateTo('materi');

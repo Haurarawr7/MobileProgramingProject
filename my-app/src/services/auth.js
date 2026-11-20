@@ -74,7 +74,24 @@ export async function getSavedUser() {
 export async function saveUserSession(userData) {
   try {
     if (userData) {
-      await AsyncStorage.setItem(USER_SESSION_KEY, JSON.stringify(userData));
+      const sessionUser = Object.fromEntries(
+        [
+          'uid',
+          'email',
+          'name',
+          'photoURL',
+          'isGuest',
+          'school',
+          'grade',
+          'points',
+          'quizCount',
+          'rewardedActivities',
+          'unlockedStories',
+        ]
+          .filter((key) => userData[key] !== undefined)
+          .map((key) => [key, userData[key]]),
+      );
+      await AsyncStorage.setItem(USER_SESSION_KEY, JSON.stringify(sessionUser));
     } else {
       await AsyncStorage.removeItem(USER_SESSION_KEY);
     }

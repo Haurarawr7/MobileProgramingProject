@@ -102,6 +102,7 @@ export default function HomeScreen({
   onDailyQuiz,
   learningStats,
   activities = [],
+  userName = 'Siswa',
 }) {
   const [query, setQuery] = useState('');
 
@@ -113,7 +114,7 @@ export default function HomeScreen({
       {/* Header */}
       <View style={common.header}>
         <View>
-          <Text style={common.greeting}>Halo, Siswa</Text>
+          <Text style={common.greeting}>Halo, {userName}</Text>
           <Text style={common.title}>Beranda Belajar</Text>
         </View>
         <View style={styles.headerActions}>
