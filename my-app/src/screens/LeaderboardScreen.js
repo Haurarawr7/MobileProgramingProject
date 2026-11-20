@@ -1,48 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
-
-const LEADERBOARDS = {
-  'Minggu ini': [
-    { id: '1', name: 'Nabila Putri', points: 520, initials: 'NP', color: COLORS.pink },
-    { id: '2', name: 'Arka Pratama', points: 480, initials: 'AP', color: COLORS.sky },
-    { id: '3', name: 'Citra Lestari', points: 420, initials: 'CL', color: COLORS.mint },
-    { id: 'you', name: 'Kamu', points: 360, initials: 'K', color: COLORS.yellow },
-    { id: '5', name: 'Rafi Ramadhan', points: 310, initials: 'RR', color: COLORS.sky },
-    { id: '6', name: 'Dinda Aulia', points: 275, initials: 'DA', color: COLORS.pink },
-    { id: '7', name: 'Bima Saputra', points: 240, initials: 'BS', color: COLORS.mint },
-  ],
-  'Bulan ini': [
-    { id: '1', name: 'Arka Pratama', points: 2140, initials: 'AP', color: COLORS.sky },
-    { id: '2', name: 'Nabila Putri', points: 1980, initials: 'NP', color: COLORS.pink },
-    { id: '3', name: 'Kamu', points: 1760, initials: 'K', color: COLORS.yellow },
-    { id: '4', name: 'Citra Lestari', points: 1690, initials: 'CL', color: COLORS.mint },
-    { id: '5', name: 'Rafi Ramadhan', points: 1510, initials: 'RR', color: COLORS.sky },
-    { id: '6', name: 'Dinda Aulia', points: 1320, initials: 'DA', color: COLORS.pink },
-    { id: '7', name: 'Bima Saputra', points: 1180, initials: 'BS', color: COLORS.mint },
-  ],
-};
+import { subscribeLeaderboard } from '../services/userData';
 
 const MEDALS = ['trophy', 'medal', 'medal'];
 const MEDAL_COLORS = ['#E4A900', '#7F8B99', '#B66B3D'];
+const AVATAR_COLORS = [COLORS.pink, COLORS.sky, COLORS.mint, COLORS.yellow];
 
 function Avatar({ player, size = 44 }) {
+  const initials = player.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('') || '?';
+
   return (
     <View
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: player.color },
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: player.color,
+        },
       ]}
     >
-      <Text style={styles.avatarText}>{player.initials}</Text>
+      <Text style={styles.avatarText}>{initials}</Text>
     </View>
   );
 }
@@ -104,20 +96,46 @@ function RankingRow({ player, rank, isCurrentUser }) {
 }
 
 export default function LeaderboardScreen({ user, points = 0 }) {
-  const [period, setPeriod] = useState('Minggu ini');
-  const players = LEADERBOARDS[period]
-    .map((player) => {
-      if (player.id !== 'you') return player;
-      return {
-        ...player,
-        name: user?.name || player.name,
-        points,
-      };
-    })
-    .sort((first, second) => second.points - first.points);
-  const podium = players.slice(0, 3);
-  const currentUserRank = players.findIndex((player) => player.id === 'you') + 1;
-  const currentUser = players.find((player) => player.id === 'you');
+  const [leaderboardState, setLeaderboardState] = useState(null);
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const uid = user.uid;
+    return subscribeLeaderboard(
+      (entries) => {
+        setLeaderboardState({ uid, entries, error: null });
+      },
+      (subscriptionError) => {
+        console.warn('Gagal memuat leaderboard:', subscriptionError);
+        setLeaderboardState({
+          uid,
+          entries: [],
+          error: 'Leaderboard gagal dimuat. Periksa koneksi internet.',
+        });
+      },
+    );
+  }, [user?.uid]);
+
+  const loading = Boolean(user?.uid) && leaderboardState?.uid !== user.uid;
+  const error = user?.uid
+    ? leaderboardState?.uid === user.uid
+      ? leaderboardState.error
+      : null
+    : 'Masuk ke akun untuk melihat leaderboard.';
+  const players =
+    leaderboardState?.uid === user?.uid ? leaderboardState.entries : [];
+  const rankedPlayers = players.map((player, index) => ({
+    ...player,
+    color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+  }));
+  const currentUserRank = rankedPlayers.findIndex(
+    (player) => player.uid === user?.uid,
+  ) + 1;
+  const podium = rankedPlayers.slice(0, 3);
+  const leaderboardUser = rankedPlayers.find((player) => player.uid === user?.uid);
+  const currentUserPoints =
+    leaderboardUser?.points ?? user?.lifetimePoints ?? points;
+  const remainingPlayers = rankedPlayers.slice(rankedPlayers.length >= 3 ? 3 : 0);
 
   return (
     <ScrollView
@@ -139,73 +157,86 @@ export default function LeaderboardScreen({ user, points = 0 }) {
           <Ionicons name="sparkles" size={20} color={COLORS.ink} />
         </View>
         <View style={styles.highlightCopy}>
-          <Text style={styles.highlightTitle}>Kamu di peringkat {currentUserRank}!</Text>
+          <Text style={styles.highlightTitle}>
+            {currentUserRank
+              ? `Kamu di peringkat ${currentUserRank}!`
+              : 'Peringkat sepanjang masa'}
+          </Text>
           <Text style={styles.highlightSubtitle}>
-            Kumpulkan poin lagi dan kejar posisi berikutnya.
+            {currentUserRank
+              ? 'Kumpulkan poin lagi dan kejar posisi berikutnya.'
+              : 'Kumpulkan poin agar masuk 50 besar.'}
           </Text>
         </View>
         <Text style={styles.highlightPoints}>
-          {currentUser?.points.toLocaleString('id-ID')}
+          {currentUserPoints.toLocaleString('id-ID')}
           {'\n'}
           <Text style={styles.highlightPointsLabel}>poin</Text>
         </Text>
       </View>
 
       <View style={styles.periodSelector}>
-        {Object.keys(LEADERBOARDS).map((item) => {
-          const isActive = item === period;
-          return (
-            <TouchableOpacity
-              key={item}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isActive }}
-              onPress={() => setPeriod(item)}
-              style={[styles.periodButton, isActive && styles.periodButtonActive]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.periodText, isActive && styles.periodTextActive]}>
-                {item}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <View style={[styles.periodButton, styles.periodButtonActive]}>
+          <Text style={[styles.periodText, styles.periodTextActive]}>
+            Sepanjang masa
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.podiumCard}>
-        <View style={styles.sectionHeading}>
-          <View>
-            <Text style={styles.sectionTitle}>Paling rajin</Text>
-            <Text style={styles.sectionCaption}>Tiga teratas periode ini</Text>
+      {loading ? (
+        <Text style={styles.statusMessage}>Memuat leaderboard...</Text>
+      ) : error ? (
+        <Text style={styles.statusMessage}>{error}</Text>
+      ) : rankedPlayers.length === 0 ? (
+        <Text style={styles.statusMessage}>
+          Belum ada peringkat. Selesaikan game untuk mendapatkan poin pertama!
+        </Text>
+      ) : (
+        <>
+          {podium.length === 3 ? (
+            <View style={styles.podiumCard}>
+              <View style={styles.sectionHeading}>
+                <View>
+                  <Text style={styles.sectionTitle}>Paling rajin</Text>
+                  <Text style={styles.sectionCaption}>Tiga teratas sepanjang masa</Text>
+                </View>
+                <Ionicons name="people-outline" size={21} color={COLORS.ink} />
+              </View>
+              <View style={styles.podium}>
+                <PodiumPlayer player={rankedPlayers[1]} rank={2} />
+                <PodiumPlayer player={rankedPlayers[0]} rank={1} />
+                <PodiumPlayer player={rankedPlayers[2]} rank={3} />
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.rankingHeading}>
+            <Text style={styles.sectionTitle}>
+              {podium.length === 3 ? 'Peringkat lainnya' : 'Peringkat'}
+            </Text>
+            <Text style={styles.sectionCaption}>
+              {rankedPlayers.length} siswa · 50 teratas
+            </Text>
           </View>
-          <Ionicons name="people-outline" size={21} color={COLORS.ink} />
-        </View>
-        <View style={styles.podium}>
-          <PodiumPlayer player={podium[1]} rank={2} />
-          <PodiumPlayer player={podium[0]} rank={1} />
-          <PodiumPlayer player={podium[2]} rank={3} />
-        </View>
-      </View>
-
-      <View style={styles.rankingHeading}>
-        <Text style={styles.sectionTitle}>Peringkat lainnya</Text>
-        <Text style={styles.sectionCaption}>{players.length} siswa</Text>
-      </View>
-      <View style={styles.rankingList}>
-        {players.slice(3).map((player, index) => {
-          const rank = index + 4;
-          return (
-            <RankingRow
-              key={player.id}
-              player={player}
-              rank={rank}
-              isCurrentUser={player.id === 'you'}
-            />
-          );
-        })}
-      </View>
-      <Text style={styles.footerNote}>
-        Poin dihitung dari aktivitas belajar dan kuis.
-      </Text>
+          <View style={styles.rankingList}>
+            {remainingPlayers.map((player, index) => {
+              const rank = rankedPlayers.length >= 3 ? index + 4 : index + 1;
+              return (
+                <RankingRow
+                  key={player.uid}
+                  player={player}
+                  rank={rank}
+                  isCurrentUser={player.uid === user?.uid}
+                />
+              );
+            })}
+          </View>
+          <Text style={styles.footerNote}>
+            Poin dihitung dari aktivitas belajar. Hanya nama dan poin yang
+            ditampilkan kepada pengguna lain.
+          </Text>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -291,6 +322,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginBottom: 18,
+    alignSelf: 'flex-start',
   },
   periodButton: {
     paddingHorizontal: 18,
@@ -463,5 +495,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: COLORS.muted,
     marginTop: 14,
+  },
+  statusMessage: {
+    fontFamily: FONTS.sans,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: COLORS.muted,
+    paddingVertical: 28,
   },
 });

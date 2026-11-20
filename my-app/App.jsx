@@ -5,7 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { TABS, MATERI } from './src/constants/data';
 import { LESSON_CONTENT, buildDailyQuiz } from './src/constants/lessonContent';
 import { VIDEO_LESSONS } from './src/constants/videoLessons';
-import { GAME_COMPLETION_REWARD, STORY_EPISODE_COST } from './src/constants/gameEconomy';
+import { STORY_EPISODE_COST } from './src/constants/gameEconomy';
 import { COLORS } from './src/constants/colors';
 import common from './src/styles/common';
 import BottomTabBar from './src/components/BottomTabBar';
@@ -242,7 +242,6 @@ export default function App() {
       await recordLearningActivity(currentUser.uid, {
         activityId: `${rewardKey}_${Date.now()}`,
         rewardKey,
-        rewardPoints: GAME_COMPLETION_REWARD,
         result: {
           ...result,
           kind: gameId === 'speed-quiz' ? 'quiz' : practice ? 'practice-game' : 'simulation',

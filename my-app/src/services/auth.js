@@ -84,6 +84,7 @@ export async function saveUserSession(userData) {
           'school',
           'grade',
           'points',
+          'lifetimePoints',
           'quizCount',
           'rewardedActivities',
           'unlockedStories',

@@ -1,91 +1,35 @@
 import {
   collection,
   doc,
-  getDoc,
+  limit,
   onSnapshot,
-  runTransaction,
-  serverTimestamp,
-  setDoc,
+  orderBy,
+  query,
 } from 'firebase/firestore';
-import { db } from './firebase';
-import {
-  addDays,
-  getActiveStreakCount,
-  getCurrentWeekDateKeys,
-  toKey,
-} from '../utils/streak';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from './firebase';
+import { getActiveStreakCount, toKey } from '../utils/streak';
 
 const userDocument = (uid) => doc(db, 'users', uid);
 
-function getStreakUpdate(account, today, date) {
-  const lastActivityDate = account.lastActivityDate || null;
-  const currentStreak = account.currentStreak || 0;
-  const currentWeek = getCurrentWeekDateKeys();
-  const streakDays = (account.streakDays || []).filter((day) =>
-    currentWeek.includes(day),
-  );
-
-  if (!streakDays.includes(today)) streakDays.push(today);
-
-  return {
-    currentStreak:
-      lastActivityDate === today
-        ? Math.max(currentStreak, 1)
-        : lastActivityDate === toKey(addDays(date, -1))
-          ? currentStreak + 1
-          : 1,
-    lastActivityDate: today,
-    streakDays,
-  };
-}
-
 export async function syncUserProfile(user) {
-  const ref = userDocument(user.uid);
-  const snapshot = await getDoc(ref);
-  const authProfile = {
-    uid: user.uid,
-    email: user.email || null,
-    name: user.name || user.email?.split('@')[0] || 'Siswa',
-    ...(user.photoURL ? { photoURL: user.photoURL } : {}),
-    isGuest: Boolean(user.isGuest),
-    updatedAt: serverTimestamp(),
-  };
-
-  if (!snapshot.exists()) {
-    await setDoc(ref, {
-      ...authProfile,
-      photoURL: user.photoURL || null,
-      school: '',
-      grade: '',
-      points: 0,
-      quizCount: 0,
-      currentStreak: 0,
-      lastActivityDate: null,
-      streakDays: [],
-      rewardedActivities: [],
-      unlockedStories: [],
-      createdAt: serverTimestamp(),
-    });
-  } else {
-    await setDoc(ref, authProfile, { merge: true });
-  }
-
-  const updatedSnapshot = await getDoc(ref);
-  return { ...updatedSnapshot.data(), uid: user.uid };
+  const result = await httpsCallable(functions, 'ensureUserProfile')({
+    name: user.name || '',
+    photoURL: user.photoURL || '',
+  });
+  return result.data;
 }
 
 export async function updateUserProfile(uid, profile) {
-  const updatedProfile = {
+  if (auth.currentUser?.uid !== uid) {
+    throw new Error('You can only update your own profile.');
+  }
+  const result = await httpsCallable(functions, 'updateUserProfile')({
     name: profile.name.trim(),
     school: profile.school.trim(),
     grade: profile.grade.trim(),
-  };
-  await setDoc(
-    userDocument(uid),
-    { ...updatedProfile, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
-  return updatedProfile;
+  });
+  return result.data;
 }
 
 export function subscribeUserData(uid, onUpdate, onError) {
@@ -165,106 +109,45 @@ export function subscribeUserData(uid, onUpdate, onError) {
   };
 }
 
+export function subscribeLeaderboard(onUpdate, onError) {
+  const leaderboardQuery = query(
+    collection(db, 'leaderboard'),
+    orderBy('points', 'desc'),
+    limit(50),
+  );
+  return onSnapshot(
+    leaderboardQuery,
+    (snapshot) => {
+      onUpdate(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    },
+    onError,
+  );
+}
+
 export async function recordLearningActivity(uid, {
   activityId,
   rewardKey,
-  rewardPoints = 0,
   result,
 }) {
-  const accountRef = userDocument(uid);
-  const activityRef = doc(db, 'users', uid, 'activities', activityId);
-
-  return runTransaction(db, async (transaction) => {
-    const [accountSnapshot, activitySnapshot] = await Promise.all([
-      transaction.get(accountRef),
-      transaction.get(activityRef),
-    ]);
-
-    const account = accountSnapshot.exists() ? accountSnapshot.data() : {};
-    const rewardedActivities = account.rewardedActivities || [];
-    const now = new Date();
-    const today = toKey(now);
-    const streakUpdate = getStreakUpdate(account, today, now);
-    if (activitySnapshot.exists()) {
-      if (
-        account.lastActivityDate !== today ||
-        !account.streakDays?.includes(today) ||
-        account.currentStreak == null
-      ) {
-        transaction.set(
-          accountRef,
-          { ...streakUpdate, updatedAt: serverTimestamp() },
-          { merge: true },
-        );
-      }
-      return { points: account.points || 0, rewarded: false };
-    }
-
-    const shouldReward =
-      rewardPoints > 0 &&
-      rewardKey &&
-      !rewardedActivities.includes(rewardKey);
-    const points = (account.points || 0) + (shouldReward ? rewardPoints : 0);
-
-    transaction.set(activityRef, {
-      ...result,
-      createdAt: serverTimestamp(),
-      rewardPoints: shouldReward ? rewardPoints : 0,
-    });
-    transaction.set(
-      accountRef,
-      {
-        points,
-        ...streakUpdate,
-        ...(result.kind === 'quiz'
-          ? { quizCount: (account.quizCount || 0) + 1 }
-          : {}),
-        rewardedActivities: shouldReward
-          ? [...rewardedActivities, rewardKey]
-          : rewardedActivities,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    return { points, rewarded: shouldReward };
+  if (auth.currentUser?.uid !== uid) {
+    throw new Error('You can only record activity for your own account.');
+  }
+  const response = await httpsCallable(functions, 'recordLearningActivity')({
+    activityId,
+    rewardKey: rewardKey || '',
+    result,
+    localDate: toKey(new Date()),
   });
+  return response.data;
 }
 
 export async function unlockStoryWithPoints(uid, storyId, cost) {
-  const accountRef = userDocument(uid);
-
-  return runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(accountRef);
-    if (!snapshot.exists()) {
-      throw new Error('Profil pengguna belum tersinkron ke database.');
-    }
-
-    const account = snapshot.data();
-    const unlockedStories = account.unlockedStories || [];
-    if (unlockedStories.includes(storyId)) {
-      return { success: true, points: account.points || 0, unlockedStories };
-    }
-    if ((account.points || 0) < cost) {
-      return { success: false, points: account.points || 0, unlockedStories };
-    }
-
-    const nextUnlockedStories = [...unlockedStories, storyId];
-    const points = account.points - cost;
-    transaction.set(
-      accountRef,
-      {
-        points,
-        unlockedStories: nextUnlockedStories,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    return {
-      success: true,
-      points,
-      unlockedStories: nextUnlockedStories,
-    };
-  });
+  if (auth.currentUser?.uid !== uid) {
+    throw new Error('You can only purchase stories for your own account.');
+  }
+  if (!Number.isFinite(cost) || cost < 0) {
+    throw new Error('Story price is invalid.');
+  }
+  const response = await httpsCallable(functions, 'unlockStoryWithPoints')({ storyId });
+  return response.data;
 }
