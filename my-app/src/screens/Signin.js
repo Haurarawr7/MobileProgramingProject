@@ -51,12 +51,14 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
     }
 
     const idToken = response.params?.id_token || response.authentication?.idToken;
+    const accessToken =
+      response.authentication?.accessToken || response.params?.access_token;
     if (!idToken) {
       setGoogleLoading(false);
       Alert.alert('Gagal Daftar dengan Google', 'Google tidak mengembalikan token autentikasi.');
       return;
     }
-    handleGoogleResponse(idToken);
+    handleGoogleResponse(idToken, accessToken);
   }, [response]);
 
   const handleGoogleResponse = async (idToken, accessToken) => {
@@ -76,6 +78,9 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
     setGoogleLoading(false);
     if (result.success) {
       onRegisterSuccess?.(result.user);
+      if (result.syncError) {
+        Alert.alert('Profil belum tersinkron', result.syncError);
+      }
     } else {
       Alert.alert('Gagal Daftar dengan Google', result.error || 'Terjadi kesalahan.');
     }
@@ -135,9 +140,12 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
     try {
       const result = await registerWithEmail(name, email, password);
       if (result.success) {
+        const syncMessage = result.syncError
+          ? `\n\n${result.syncError}`
+          : '';
         Alert.alert(
           'Pendaftaran Berhasil',
-          `Selamat datang di Logiterm, ${result.user.name}!`,
+          `Selamat datang di Logiterm, ${result.user.name}!${syncMessage}`,
           [{ text: 'Lanjutkan', onPress: () => onRegisterSuccess?.(result.user) }]
         );
       } else {

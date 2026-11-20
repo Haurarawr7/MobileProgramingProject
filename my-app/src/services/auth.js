@@ -11,6 +11,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncUserProfile, updateUserProfile } from './userData';
 
 const USER_SESSION_KEY = '@user_session';
 
@@ -52,8 +53,15 @@ export async function getSavedUser() {
       photoURL: user.photoURL,
       isGuest: user.isAnonymous,
     };
-    await saveUserSession(userData);
-    return userData;
+    try {
+      const syncedUser = await syncUserProfile(userData);
+      await saveUserSession(syncedUser);
+      return syncedUser;
+    } catch (syncError) {
+      console.warn('Gagal menyinkronkan profil pengguna:', syncError);
+      await saveUserSession(userData);
+      return { ...userData, syncError: 'Profil belum dapat disinkronkan.' };
+    }
   } catch (err) {
     console.warn('Gagal membaca sesi pengguna:', err);
     return null;
@@ -94,8 +102,8 @@ export async function loginWithEmail(email, password) {
       name: user.displayName || user.email.split('@')[0],
       isGuest: false,
     };
-    await saveUserSession(userData);
-    return { success: true, user: userData };
+    const session = await createUserSession(userData);
+    return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
   }
@@ -126,8 +134,8 @@ export async function registerWithEmail(name, email, password) {
       name: cleanName || user.email.split('@')[0],
       isGuest: false,
     };
-    await saveUserSession(userData);
-    return { success: true, user: userData };
+    const session = await createUserSession(userData);
+    return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
   }
@@ -150,8 +158,8 @@ export async function loginAsGuest() {
       name: 'Tamu',
       isGuest: true,
     };
-    await saveUserSession(userData);
-    return { success: true, user: userData };
+    const session = await createUserSession(userData);
+    return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
   }
@@ -172,16 +180,74 @@ export async function loginWithGoogleCredential(idToken, userInfo = null) {
     const credential = GoogleAuthProvider.credential(idToken);
     const userCredential = await signInWithCredential(auth, credential);
     const user = userCredential.user;
+    const name =
+      user.displayName ||
+      userInfo?.name ||
+      user.email?.split('@')[0] ||
+      'Pengguna Google';
+    const photoURL = userInfo?.picture || user.photoURL || null;
+    if (user.displayName !== name || user.photoURL !== photoURL) {
+      await updateProfile(user, { displayName: name, photoURL });
+    }
     const userData = {
       uid: user.uid,
       email: user.email,
-      name: user.displayName || userInfo?.name || user.email?.split('@')[0] || 'Pengguna Google',
-      photoURL: user.photoURL || userInfo?.picture,
+      name,
+      photoURL,
       isGuest: false,
+    };
+    const session = await createUserSession(userData);
+    return { success: true, ...session };
+  } catch (error) {
+    return { success: false, error: formatAuthError(error.code) };
+  }
+}
+
+export async function getGoogleUserInfo(accessToken) {
+  if (!accessToken) return null;
+  try {
+    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Google profile request failed (${response.status}).`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.warn('Gagal mengambil profil Google:', error);
+    return null;
+  }
+}
+
+export async function saveAuthenticatedProfile(profile) {
+  const user = auth.currentUser;
+  if (!user) {
+    return { success: false, error: 'Sesi pengguna telah berakhir. Silakan masuk kembali.' };
+  }
+
+  const name = profile.name.trim();
+  if (!name) {
+    return { success: false, error: 'Nama tidak boleh kosong.' };
+  }
+
+  try {
+    await updateProfile(user, { displayName: name });
+    const updatedProfile = await updateUserProfile(user.uid, {
+      ...profile,
+      name,
+    });
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name,
+      photoURL: user.photoURL,
+      isGuest: user.isAnonymous,
+      ...updatedProfile,
     };
     await saveUserSession(userData);
     return { success: true, user: userData };
   } catch (error) {
+    console.warn('Gagal menyimpan perubahan profil:', error);
     return { success: false, error: formatAuthError(error.code) };
   }
 }
@@ -251,4 +317,17 @@ function formatAuthError(errorCode) {
     default:
       return 'Terjadi kesalahan autentikasi. Silakan coba lagi.';
   }
+}
+
+async function createUserSession(userData) {
+  let syncedUser = userData;
+  let syncError;
+  try {
+    syncedUser = await syncUserProfile(userData);
+  } catch (error) {
+    console.warn('Gagal menyinkronkan profil pengguna:', error);
+    syncError = 'Profil belum dapat disinkronkan ke database.';
+  }
+  await saveUserSession(syncedUser);
+  return { user: syncedUser, syncError };
 }

@@ -14,8 +14,6 @@ import { ILLUSTRATION } from '../constants/assets';
 import {
   STREAK_TOTAL,
   STREAK_ACTIVE,
-  SUMMARY,
-  ACTIVITIES,
 } from '../constants/data';
 import common from '../styles/common';
 import SectionHeader from '../components/SectionHeader';
@@ -102,7 +100,8 @@ export default function HomeScreen({
   onContinue,
   onGoScan,
   onDailyQuiz,
-  points = 0,
+  learningStats,
+  activities = [],
 }) {
   const [query, setQuery] = useState('');
 
@@ -141,10 +140,10 @@ export default function HomeScreen({
       </View>
 
       <View style={common.summaryRow}>
-        {SUMMARY.map((item) => (
+        {learningStats.summary.map((item) => (
           <SummaryCard
             key={item.id}
-            value={item.id === 's3' ? points.toLocaleString('id-ID') : item.value}
+            value={item.value}
             label={item.label}
           />
         ))}
@@ -171,17 +170,28 @@ export default function HomeScreen({
 
       {/* Aktivitas Belajar */}
       <SectionHeader title="Aktivitas Belajar" />
-      <View>
-        {ACTIVITIES.map((item) => (
-          <ActivityItem key={item.id} item={item} isLast={false} />
-        ))}
-      </View>
+      {activities.length ? (
+        <View>
+          {activities.slice(0, 5).map((item, index) => (
+            <ActivityItem
+              key={item.id}
+              item={item}
+              isLast={index === Math.min(activities.length, 5) - 1}
+            />
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.emptyActivity}>
+          Aktivitas belajar kamu akan muncul di sini.
+        </Text>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: 12 },
+  emptyActivity: { fontSize: 13, color: COLORS.text, paddingVertical: 12 },
 
   // Streak
   streakRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },

@@ -54,12 +54,14 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
     }
 
     const idToken = response.params?.id_token || response.authentication?.idToken;
+    const accessToken =
+      response.authentication?.accessToken || response.params?.access_token;
     if (!idToken) {
       setGoogleLoading(false);
       Alert.alert('Gagal Masuk dengan Google', 'Google tidak mengembalikan token autentikasi.');
       return;
     }
-    handleGoogleResponse(idToken);
+    handleGoogleResponse(idToken, accessToken);
   }, [response]);
 
   const handleGoogleResponse = async (idToken, accessToken) => {
@@ -79,6 +81,9 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
     setGoogleLoading(false);
     if (result.success) {
       onLoginSuccess?.(result.user);
+      if (result.syncError) {
+        Alert.alert('Profil belum tersinkron', result.syncError);
+      }
     } else {
       Alert.alert('Gagal Masuk dengan Google', result.error || 'Terjadi kesalahan.');
     }
@@ -123,6 +128,9 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
       const result = await loginWithEmail(email, password);
       if (result.success) {
         onLoginSuccess?.(result.user);
+        if (result.syncError) {
+          Alert.alert('Profil belum tersinkron', result.syncError);
+        }
       } else {
         Alert.alert('Gagal Masuk', result.error || 'Email atau kata sandi tidak cocok.');
       }
@@ -140,6 +148,9 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
       const result = await loginAsGuest();
       if (result.success) {
         onLoginSuccess?.(result.user);
+        if (result.syncError) {
+          Alert.alert('Profil belum tersinkron', result.syncError);
+        }
       } else {
         Alert.alert('Gagal Masuk sebagai Tamu', result.error || 'Silakan coba lagi.');
       }
