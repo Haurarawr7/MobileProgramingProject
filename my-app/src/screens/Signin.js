@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,17 +12,8 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import { registerWithEmail, loginWithGoogleCredential } from '../services/auth';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_CLIENT_IDS = {
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
-};
 
 export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   const [name, setName] = useState('');
@@ -34,32 +25,6 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const googleClientId = Platform.select({
-    android: GOOGLE_CLIENT_IDS.androidClientId,
-    ios: GOOGLE_CLIENT_IDS.iosClientId,
-    default: GOOGLE_CLIENT_IDS.webClientId,
-  });
-
-  // Hook Google Auth dari expo-auth-session
-  const [request, response, promptAsync] = Google.useAuthRequest(GOOGLE_CLIENT_IDS);
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type !== 'success') {
-      setGoogleLoading(false);
-      return;
-    }
-
-    const idToken = response.params?.id_token || response.authentication?.idToken;
-    const accessToken =
-      response.authentication?.accessToken || response.params?.access_token;
-    if (!idToken) {
-      setGoogleLoading(false);
-      Alert.alert('Gagal Daftar dengan Google', 'Google tidak mengembalikan token autentikasi.');
-      return;
-    }
-    handleGoogleResponse(idToken, accessToken);
-  }, [response]);
 
   const handleGoogleResponse = async (idToken, accessToken) => {
     setGoogleLoading(true);
@@ -69,9 +34,10 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
         const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
+        if (!res.ok) throw new Error(`Google profile request failed: ${res.status}`);
         userInfo = await res.json();
-      } catch (e) {
-        // ignore
+      } catch (error) {
+        console.warn('Could not retrieve Google profile details:', error);
       }
     }
     const result = await loginWithGoogleCredential(idToken, userInfo);
@@ -83,30 +49,6 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
       }
     } else {
       Alert.alert('Gagal Daftar dengan Google', result.error || 'Terjadi kesalahan.');
-    }
-  };
-
-  const handleGooglePress = async () => {
-    if (!googleClientId) {
-      Alert.alert(
-        'Google belum dikonfigurasi',
-        `Tambahkan EXPO_PUBLIC_GOOGLE_${Platform.OS.toUpperCase()}_CLIENT_ID pada file .env untuk mengaktifkan Google Sign-In.`,
-      );
-      return;
-    }
-    if (!request) {
-      Alert.alert('Google belum siap', 'Tunggu sebentar, lalu coba lagi.');
-      return;
-    }
-
-    setGoogleLoading(true);
-    try {
-      const result = await promptAsync();
-      if (result?.type !== 'success') setGoogleLoading(false);
-    } catch (error) {
-      setGoogleLoading(false);
-      console.warn('Google authentication prompt failed', error);
-      Alert.alert('Gagal Daftar dengan Google', 'Silakan coba lagi.');
     }
   };
 
@@ -305,26 +247,15 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
         </View>
 
         {/* Tombol Daftar dengan Google */}
-        <TouchableOpacity
-          style={styles.googleButton}
-          activeOpacity={0.85}
-          onPress={handleGooglePress}
-          disabled={googleLoading}
-        >
-          {googleLoading ? (
-            <ActivityIndicator color="#1F2937" />
-          ) : (
-            <View style={styles.googleButtonContent}>
-              <Ionicons
-                name="logo-google"
-                size={18}
-                color="#EA4335"
-                style={{ marginRight: 10 }}
-              />
-              <Text style={styles.googleButtonText}>Daftar dengan Google</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <GoogleAuthButton
+          action="Daftar"
+          loading={googleLoading}
+          onLoadingChange={setGoogleLoading}
+          onTokens={handleGoogleResponse}
+          buttonStyle={styles.googleButton}
+          contentStyle={styles.googleButtonContent}
+          textStyle={styles.googleButtonText}
+        />
 
         {/* Footer: Sudah punya akun? Masuk */}
         <View style={styles.footerRow}>

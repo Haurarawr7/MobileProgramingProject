@@ -25,11 +25,12 @@ export default function LessonQuizScreen({
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const rewardSent = useRef(false);
-  const attemptId = useRef(Date.now());
+  const attemptId = useRef(null);
 
   useEffect(() => {
     if (finished && !rewardSent.current) {
       rewardSent.current = true;
+      attemptId.current ||= Date.now();
       onFinished?.({
         activityId: `${quizId}_${attemptId.current}`,
         correctCount,
@@ -74,7 +75,7 @@ export default function LessonQuizScreen({
 
   const restart = () => {
     rewardSent.current = false;
-    attemptId.current = Date.now();
+    attemptId.current = null;
     setAttempt((current) => current + 1);
     setIndex(0);
     setSelected(null);

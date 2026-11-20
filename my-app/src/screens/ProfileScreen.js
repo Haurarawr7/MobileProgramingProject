@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,17 +34,12 @@ export default function ProfileScreen({
   const [notif, setNotif] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [name, setName] = useState(user?.name || '');
-  const [school, setSchool] = useState(user?.school || '');
-  const [grade, setGrade] = useState(user?.grade || '');
+  const [profileDraft, setProfileDraft] = useState(null);
+  const name = profileDraft?.name ?? user?.name ?? '';
+  const school = profileDraft?.school ?? user?.school ?? '';
+  const grade = profileDraft?.grade ?? user?.grade ?? '';
   const displayName = user?.name || 'Siswa';
   const initial = displayName.charAt(0).toUpperCase();
-
-  useEffect(() => {
-    setName(user?.name || '');
-    setSchool(user?.school || '');
-    setGrade(user?.grade || '');
-  }, [user?.grade, user?.name, user?.school]);
 
   const saveProfile = async () => {
     if (!name.trim()) {
@@ -60,6 +55,7 @@ export default function ProfileScreen({
         return;
       }
       setEditing(false);
+      setProfileDraft(null);
     } catch (error) {
       console.warn('Gagal menyimpan profil', error);
       Alert.alert('Gagal menyimpan profil', 'Periksa koneksi internet lalu coba lagi.');
@@ -124,7 +120,19 @@ export default function ProfileScreen({
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Edit profil"
-          onPress={() => setEditing((current) => !current)}
+          onPress={() => {
+            if (editing) {
+              setEditing(false);
+              setProfileDraft(null);
+            } else {
+              setProfileDraft({
+                name: user?.name || '',
+                school: user?.school || '',
+                grade: user?.grade || '',
+              });
+              setEditing(true);
+            }
+          }}
           hitSlop={10}
         >
           <Ionicons
@@ -139,9 +147,9 @@ export default function ProfileScreen({
         <View style={styles.editCard}>
           <Text style={styles.editTitle}>Edit profil</Text>
           {[
-            { label: 'Nama', value: name, setValue: setName, placeholder: 'Nama kamu' },
-            { label: 'Sekolah', value: school, setValue: setSchool, placeholder: 'Nama sekolah' },
-            { label: 'Kelas', value: grade, setValue: setGrade, placeholder: 'Contoh: Kelas X' },
+            { label: 'Nama', key: 'name', value: name, placeholder: 'Nama kamu' },
+            { label: 'Sekolah', key: 'school', value: school, placeholder: 'Nama sekolah' },
+            { label: 'Kelas', key: 'grade', value: grade, placeholder: 'Contoh: Kelas X' },
           ].map((field) => (
             <View key={field.label} style={styles.editField}>
               <Text style={styles.editLabel}>{field.label}</Text>
@@ -149,7 +157,9 @@ export default function ProfileScreen({
                 accessibilityLabel={field.label}
                 style={styles.editInput}
                 value={field.value}
-                onChangeText={field.setValue}
+                onChangeText={(value) =>
+                  setProfileDraft((current) => ({ ...current, [field.key]: value }))
+                }
                 placeholder={field.placeholder}
                 placeholderTextColor={COLORS.muted}
                 autoCapitalize="words"

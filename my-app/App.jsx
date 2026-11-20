@@ -103,17 +103,10 @@ export default function App() {
   useEffect(() => {
     const uid = currentUser?.uid;
     if (!uid) {
-      setUserData(null);
-      setReadingProgress({});
-      setCompletedMateri([]);
-      setLastOpenedId(null);
       lastSavedProgress.current = {};
       return undefined;
     }
 
-    setUserData(null);
-    setReadingProgress({});
-    setCompletedMateri([]);
     lastSavedProgress.current = {};
 
     return subscribeUserData(
@@ -140,6 +133,11 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   const handleLoginSuccess = (user) => {
+    setUserData(null);
+    setReadingProgress({});
+    setCompletedMateri([]);
+    setLastOpenedId(null);
+    lastSavedProgress.current = {};
     setCurrentUser(user);
     setNavigationStack(['home']);
   };

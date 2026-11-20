@@ -3,16 +3,14 @@ import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/aut
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Ganti nilai berikut dengan firebaseConfig dari Firebase Console Anda
-// (Project Settings > General > Your apps > Web app </>):
 const firebaseConfig = {
-  apiKey: "AIzaSyCwJjSDF69GxVWpCm1yLhJqS6bxf0pw0r4",
-  authDomain: "logiterm-mobile.firebaseapp.com",
-  projectId: "logiterm-mobile",
-  storageBucket: "logiterm-mobile.firebasestorage.app",
-  messagingSenderId: "1004261741417",
-  appId: "1:1004261741417:web:170236b1d6eb320878e3f8",
-  measurementId: "G-Z2VEJRVC5H"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 export const isFirebaseConfigured = Boolean(
@@ -21,6 +19,12 @@ export const isFirebaseConfigured = Boolean(
     firebaseConfig.projectId &&
     firebaseConfig.appId,
 );
+
+if (!isFirebaseConfigured) {
+  throw new Error(
+    'Firebase is not configured. Copy my-app/.env.example to my-app/.env and fill in the Firebase values.',
+  );
+}
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 

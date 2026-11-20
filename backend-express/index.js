@@ -27,7 +27,10 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
 //define port
-const port = 3000;
+const port = Number(process.env.PORT || 3000);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('PORT must be a valid TCP port between 1 and 65535.');
+}
 
 //route
 app.get('/', (req, res) => {
