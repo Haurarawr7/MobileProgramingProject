@@ -11,27 +11,23 @@ Keep `.env` files private; only commit the `.env.example` templates. `EXPO_PUBLI
 values are bundled into the client app and are not secrets. Never put database
 credentials or private server keys in `my-app/.env` or any `EXPO_PUBLIC_*` variable.
 
-## Firebase leaderboard deployment
+## Firebase Spark setup
 
-The all-time leaderboard publishes only a player's display name and points. Point
-awards, story purchases, profile initialization, and public leaderboard writes are
-handled by Firebase Cloud Functions; Firestore rules deny clients direct writes to
-account scores and leaderboard entries. All-time ranking uses lifetime points
-earned, so spending wallet points on a story doesn't lower a player's rank.
-
-The Firebase project must have billing enabled to deploy Cloud Functions. From the
-repository root, install/test the function package, deploy the functions, then
-publish the stricter Firestore rules:
+The app uses Firebase Authentication and Firestore directly; it does not require
+Cloud Functions or a paid hosting service. Publish the Firestore rules from the
+repository root:
 
 ```powershell
-Set-Location functions
-npm install
-npm test
-Set-Location ..
-npx firebase-tools deploy --only functions
 npx firebase-tools deploy --only firestore:rules
 ```
 
-`.firebaserc` selects the app's Firebase project. Change its project alias only if
-you intend to deploy to a different Firebase project. The app displays the top 50
-all-time scores; weekly and monthly score totals are not currently tracked.
+The all-time leaderboard publishes only a player's display name and lifetime
+points. Rules restrict account and leaderboard writes to the signed-in owner,
+limit point changes to fixed one-time rewards, and validate story purchases.
+Because the game and score requests run on the player's device, a determined user
+can still modify the app or submit allowed reward claims directly. This is a
+best-effort setup for a casual leaderboard, not cheat-proof score verification.
+
+`.firebaserc` selects the Firebase project. Confirm it is the intended project
+before deploying rules. The leaderboard displays the top 50 all-time scores;
+weekly and monthly score totals are not tracked.

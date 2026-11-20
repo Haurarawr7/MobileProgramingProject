@@ -2,23 +2,165 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedInAs(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function accountPath(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function leaderboardPath(userId) {
+      return /databases/$(database)/documents/leaderboard/$(userId);
+    }
+
+    function hasMatchingLeaderboard(userId, account) {
+      return account.isGuest ||
+        (existsAfter(leaderboardPath(userId)) &&
+          getAfter(leaderboardPath(userId)).data.uid == userId &&
+          getAfter(leaderboardPath(userId)).data.name == account.name &&
+          getAfter(leaderboardPath(userId)).data.points == account.lifetimePoints);
+    }
+
+    function validAccount(account, userId) {
+      return account.keys().hasAll([
+          'uid', 'email', 'name', 'photoURL', 'isGuest', 'school', 'grade',
+          'points', 'lifetimePoints', 'quizCount', 'currentStreak',
+          'lastActivityDate', 'streakDays', 'rewardedActivities',
+          'unlockedStories', 'createdAt', 'updatedAt'
+        ]) &&
+        account.keys().hasOnly([
+          'uid', 'email', 'name', 'photoURL', 'isGuest', 'school', 'grade',
+          'points', 'lifetimePoints', 'quizCount', 'currentStreak',
+          'lastActivityDate', 'streakDays', 'rewardedActivities',
+          'unlockedStories', 'createdAt', 'updatedAt'
+        ]) &&
+        account.uid == userId &&
+        (account.email == null || account.email is string) &&
+        account.name is string && account.name.size() > 0 &&
+        account.name.size() <= 50 &&
+        (account.photoURL == null ||
+          (account.photoURL is string && account.photoURL.size() <= 2048)) &&
+        account.isGuest is bool &&
+        account.school is string && account.school.size() <= 100 &&
+        account.grade is string && account.grade.size() <= 40 &&
+        account.points is int && account.points >= 0 &&
+        account.lifetimePoints is int &&
+        account.lifetimePoints >= account.points &&
+        account.quizCount is int && account.quizCount >= 0 &&
+        account.currentStreak is int && account.currentStreak >= 0 &&
+        (account.lastActivityDate == null || account.lastActivityDate is string) &&
+        account.streakDays is list && account.streakDays.size() <= 7 &&
+        account.rewardedActivities is list &&
+        account.rewardedActivities.size() <= 9 &&
+        account.rewardedActivities.toSet().hasOnly([
+          'practice-flashcards', 'practice-matching', 'practice-speed-quiz',
+          'simulation-m1', 'simulation-m2', 'simulation-m3',
+          'simulation-m4', 'simulation-m5', 'simulation-m6'
+        ]) &&
+        account.unlockedStories is list && account.unlockedStories.size() <= 1 &&
+        account.unlockedStories.toSet().hasOnly(['story-binary-search']) &&
+        account.createdAt is timestamp &&
+        account.updatedAt is timestamp;
+    }
+
+    function validRewardIncrement() {
+      let oldRewards = resource.data.get('rewardedActivities', []);
+      let newRewards = request.resource.data.rewardedActivities;
+      return request.resource.data.points == resource.data.get('points', 0) + 10 &&
+        request.resource.data.lifetimePoints ==
+          resource.data.get('lifetimePoints', resource.data.get('points', 0)) + 10 &&
+        newRewards.size() == oldRewards.size() + 1 &&
+        newRewards.toSet().difference(oldRewards.toSet()).size() == 1 &&
+        oldRewards.toSet().difference(newRewards.toSet()).size() == 0;
+    }
+
+    function validStoryPurchase() {
+      let oldStories = resource.data.get('unlockedStories', []);
+      let newStories = request.resource.data.unlockedStories;
+      return request.resource.data.points == resource.data.get('points', 0) - 50 &&
+        request.resource.data.lifetimePoints ==
+          resource.data.get('lifetimePoints', resource.data.get('points', 0)) &&
+        newStories.size() == oldStories.size() + 1 &&
+        newStories.toSet().difference(oldStories.toSet()).hasOnly([
+          'story-binary-search'
+        ]) &&
+        oldStories.toSet().difference(newStories.toSet()).size() == 0;
+    }
+
+    function scoreFieldsUnchanged() {
+      return request.resource.data.points == resource.data.get('points', 0) &&
+        request.resource.data.lifetimePoints ==
+          resource.data.get('lifetimePoints', resource.data.get('points', 0)) &&
+        request.resource.data.rewardedActivities ==
+          resource.data.get('rewardedActivities', []) &&
+        request.resource.data.unlockedStories ==
+          resource.data.get('unlockedStories', []);
+    }
+
     match /users/{userId} {
-      allow get: if request.auth != null && request.auth.uid == userId;
-      allow create, update, delete: if false;
+      allow get: if signedInAs(userId);
+      allow list, delete: if false;
+
+      allow create: if signedInAs(userId) &&
+        validAccount(request.resource.data, userId) &&
+        request.resource.data.points == 0 &&
+        request.resource.data.lifetimePoints == 0 &&
+        request.resource.data.rewardedActivities.size() == 0 &&
+        request.resource.data.unlockedStories.size() == 0 &&
+        hasMatchingLeaderboard(userId, request.resource.data);
+
+      allow update: if signedInAs(userId) &&
+        validAccount(request.resource.data, userId) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.isGuest == resource.data.isGuest &&
+        request.resource.data.createdAt == resource.data.get(
+          'createdAt', request.resource.data.createdAt
+        ) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'photoURL', 'school', 'grade', 'points', 'lifetimePoints',
+          'quizCount', 'currentStreak', 'lastActivityDate', 'streakDays',
+          'rewardedActivities', 'unlockedStories', 'updatedAt'
+        ]) &&
+        (scoreFieldsUnchanged() || validRewardIncrement() || validStoryPurchase()) &&
+        hasMatchingLeaderboard(userId, request.resource.data);
 
       match /progress/{materiId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if signedInAs(userId);
       }
 
       match /activities/{activityId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow write: if false;
+        allow read: if signedInAs(userId);
+        allow create: if signedInAs(userId) &&
+          request.resource.data.keys().hasOnly([
+            'kind', 'icon', 'title', 'subtitle', 'correctCount',
+            'totalQuestions', 'correct', 'total', 'quizId', 'createdAt'
+          ]) &&
+          request.resource.data.kind in [
+            'lesson', 'quiz', 'practice-game', 'simulation', 'story'
+          ] &&
+          request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
       }
     }
 
     match /leaderboard/{userId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      allow create, update: if signedInAs(userId) &&
+        request.resource.data.keys().hasOnly(['uid', 'name', 'points']) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 50 &&
+        request.resource.data.points is int &&
+        request.resource.data.points >= 0 &&
+        existsAfter(accountPath(userId)) &&
+        !getAfter(accountPath(userId)).data.isGuest &&
+        request.resource.data.name == getAfter(accountPath(userId)).data.name &&
+        request.resource.data.points ==
+          getAfter(accountPath(userId)).data.lifetimePoints;
+      allow delete: if false;
     }
   }
 }
