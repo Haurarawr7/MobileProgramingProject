@@ -64,7 +64,7 @@ export default function GamePlayScreen({ config, onBack, onReward }) {
     setResult(stats);
     if (!rewardSent.current) {
       rewardSent.current = true;
-      onReward?.();
+      onReward?.(stats);
     }
   };
 

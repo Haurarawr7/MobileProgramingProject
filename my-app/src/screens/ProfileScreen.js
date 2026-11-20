@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Image,
   View,
   Text,
+  TextInput,
   ScrollView,
   TouchableOpacity,
   Switch,
@@ -9,14 +13,72 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { PROFILE, SUMMARY, BADGES, MENU } from '../constants/data';
+import { MENU } from '../constants/data';
 import common from '../styles/common';
 import SummaryCard from '../components/SummaryCard';
 
-export default function ProfileScreen({ onBack, onLogout, user, points = 0 }) {
+const EMPTY_LEARNING_STATS = {
+  completedLessons: 0,
+  quizCount: 0,
+  points: 0,
+  summary: [],
+};
+
+export default function ProfileScreen({
+  onBack,
+  onLogout,
+  user,
+  learningStats = EMPTY_LEARNING_STATS,
+  onSaveProfile,
+}) {
   const [notif, setNotif] = useState(true);
-  const displayName = user?.name || PROFILE.name;
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [school, setSchool] = useState(user?.school || '');
+  const [grade, setGrade] = useState(user?.grade || '');
+  const displayName = user?.name || 'Siswa';
   const initial = displayName.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    setName(user?.name || '');
+    setSchool(user?.school || '');
+    setGrade(user?.grade || '');
+  }, [user?.grade, user?.name, user?.school]);
+
+  const saveProfile = async () => {
+    if (!name.trim()) {
+      Alert.alert('Nama belum diisi', 'Masukkan nama sebelum menyimpan profil.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const result = await onSaveProfile?.({ name, school, grade });
+      if (!result?.success) {
+        Alert.alert('Gagal menyimpan profil', result?.error || 'Silakan coba lagi.');
+        return;
+      }
+      setEditing(false);
+    } catch (error) {
+      console.warn('Gagal menyimpan profil', error);
+      Alert.alert('Gagal menyimpan profil', 'Periksa koneksi internet lalu coba lagi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const profileBadges = [
+    learningStats.completedLessons > 0
+      ? { id: 'first-lesson', icon: 'book-outline', label: 'Mulai belajar' }
+      : null,
+    learningStats.quizCount > 0
+      ? { id: 'first-quiz', icon: 'help-circle-outline', label: 'Kuis pertama' }
+      : null,
+    learningStats.points >= 50
+      ? { id: 'points', icon: 'trophy-outline', label: '50 poin' }
+      : null,
+  ].filter(Boolean);
 
   return (
     <ScrollView
@@ -41,31 +103,81 @@ export default function ProfileScreen({ onBack, onLogout, user, points = 0 }) {
 
       {/* Identitas */}
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+        {user?.photoURL ? (
+          <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+        )}
         <View style={styles.profileInfo}>
           <Text style={styles.profileName} numberOfLines={1}>
             {displayName}
           </Text>
-          <Text style={styles.profileSub}>
-            {user?.email || `${PROFILE.grade} · ${PROFILE.school}`}
-          </Text>
+          <Text style={styles.profileSub}>{user?.email || 'Akun tamu'}</Text>
+          {user?.school || user?.grade ? (
+            <Text style={styles.profileSub}>
+              {[user.grade, user.school].filter(Boolean).join(' · ')}
+            </Text>
+          ) : null}
         </View>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Edit profil"
+          onPress={() => setEditing((current) => !current)}
+          hitSlop={10}
+        >
+          <Ionicons
+            name={editing ? 'close-outline' : 'create-outline'}
+            size={22}
+            color={COLORS.ink}
+          />
+        </TouchableOpacity>
       </View>
+
+      {editing ? (
+        <View style={styles.editCard}>
+          <Text style={styles.editTitle}>Edit profil</Text>
+          {[
+            { label: 'Nama', value: name, setValue: setName, placeholder: 'Nama kamu' },
+            { label: 'Sekolah', value: school, setValue: setSchool, placeholder: 'Nama sekolah' },
+            { label: 'Kelas', value: grade, setValue: setGrade, placeholder: 'Contoh: Kelas X' },
+          ].map((field) => (
+            <View key={field.label} style={styles.editField}>
+              <Text style={styles.editLabel}>{field.label}</Text>
+              <TextInput
+                accessibilityLabel={field.label}
+                style={styles.editInput}
+                value={field.value}
+                onChangeText={field.setValue}
+                placeholder={field.placeholder}
+                placeholderTextColor={COLORS.muted}
+                autoCapitalize="words"
+              />
+            </View>
+          ))}
+          <TouchableOpacity
+            disabled={saving}
+            style={styles.saveButton}
+            onPress={saveProfile}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator color={COLORS.ink} />
+            ) : (
+              <Text style={styles.saveButtonText}>Simpan ke akun</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Ringkasan */}
       <Text style={[common.sectionTitle, common.sectionTitleSolo]}>
         Ringkasan Belajar
       </Text>
       <View style={common.summaryRow}>
-        {SUMMARY.map((item) => (
-          <SummaryCard
-            key={item.id}
-            value={item.id === 's3' ? points.toLocaleString('id-ID') : item.value}
-            label={item.label}
-            isProfile
-          />
+        {learningStats.summary.map((item) => (
+          <SummaryCard key={item.id} value={item.value} label={item.label} isProfile />
         ))}
       </View>
 
@@ -74,14 +186,16 @@ export default function ProfileScreen({ onBack, onLogout, user, points = 0 }) {
         Pencapaian
       </Text>
       <View style={styles.badgeRow}>
-        {BADGES.map((b) => (
+        {profileBadges.length ? profileBadges.map((b) => (
           <View key={b.id} style={styles.badge}>
             <View style={styles.badgeIcon}>
               <Ionicons name={b.icon} size={22} color={COLORS.primary} />
             </View>
             <Text style={styles.badgeLabel}>{b.label}</Text>
           </View>
-        ))}
+        )) : (
+          <Text style={styles.noBadges}>Selesaikan materi atau kuis untuk membuka pencapaian.</Text>
+        )}
       </View>
 
       {/* Pengaturan */}
@@ -149,6 +263,12 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 26, fontWeight: '800', color: COLORS.white },
   profileInfo: { flex: 1 },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.sky,
+  },
   profileName: {
     fontSize: 18,
     fontWeight: '700',
@@ -156,8 +276,47 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   profileSub: { fontSize: 13, color: COLORS.text },
+  editCard: {
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.addAmber,
+    marginBottom: 24,
+  },
+  editTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: 14,
+  },
+  editField: { marginBottom: 12 },
+  editLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  editInput: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.addCreamDark,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: COLORS.ink,
+  },
+  saveButton: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: COLORS.yellow,
+    marginTop: 4,
+  },
+  saveButtonText: { fontSize: 14, fontWeight: '700', color: COLORS.ink },
 
   badgeRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
+  noBadges: { fontSize: 13, color: COLORS.text, marginBottom: 28 },
   badge: {
     flex: 1,
     alignItems: 'center',

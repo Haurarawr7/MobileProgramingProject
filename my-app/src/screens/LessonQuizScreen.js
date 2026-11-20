@@ -14,6 +14,7 @@ import common from '../styles/common';
 
 export default function LessonQuizScreen({
   title,
+  quizId = 'quiz',
   questions = [],
   onBack,
   onFinished,
@@ -24,13 +25,18 @@ export default function LessonQuizScreen({
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const rewardSent = useRef(false);
+  const attemptId = useRef(Date.now());
 
   useEffect(() => {
     if (finished && !rewardSent.current) {
       rewardSent.current = true;
-      onFinished?.(correctCount);
+      onFinished?.({
+        activityId: `${quizId}_${attemptId.current}`,
+        correctCount,
+        totalQuestions: questions.length,
+      });
     }
-  }, [correctCount, finished, onFinished]);
+  }, [correctCount, finished, onFinished, questions.length, quizId]);
 
   const preparedQuestions = useMemo(
     () =>
@@ -67,6 +73,8 @@ export default function LessonQuizScreen({
   };
 
   const restart = () => {
+    rewardSent.current = false;
+    attemptId.current = Date.now();
     setAttempt((current) => current + 1);
     setIndex(0);
     setSelected(null);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -49,15 +49,20 @@ const STORY_STEPS = [
   },
 ];
 
-export default function StoryChatScreen({ onBack }) {
+export default function StoryChatScreen({ onBack, onComplete }) {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [finished, setFinished] = useState(false);
+  const completionRecorded = useRef(false);
   const step = STORY_STEPS[index];
 
   const advance = () => {
     if (index === STORY_STEPS.length - 1) {
       setFinished(true);
+      if (!completionRecorded.current) {
+        completionRecorded.current = true;
+        onComplete?.();
+      }
       return;
     }
     setIndex((current) => current + 1);

@@ -54,7 +54,7 @@ function FlashcardGame({ onReward }) {
   const next = () => {
     if (index === FLASHCARDS.length - 1) {
       setFinished(true);
-      onReward('flashcards');
+      onReward('flashcards', { correct: FLASHCARDS.length, total: FLASHCARDS.length });
       return;
     }
     setIndex((current) => current + 1);
@@ -116,7 +116,12 @@ function MatchingGame({ onReward }) {
       setMessage(nextMatched.length === MATCH_PAIRS.length
         ? 'Semua pasangan cocok!'
         : 'Benar! Pilih pasangan berikutnya.');
-      if (nextMatched.length === MATCH_PAIRS.length) onReward('matching');
+      if (nextMatched.length === MATCH_PAIRS.length) {
+        onReward('matching', {
+          correct: MATCH_PAIRS.length,
+          total: MATCH_PAIRS.length,
+        });
+      }
       return;
     }
     setSelectedTerm(null);
@@ -198,9 +203,10 @@ export default function PracticeGameScreen({
     return (
       <LessonQuizScreen
         title="Kuis Cepat"
+        quizId="speed-quiz"
         questions={PRACTICE_QUESTIONS}
         onBack={onBack}
-        onFinished={() => onReward('speed-quiz')}
+        onFinished={(result) => onReward('speed-quiz', result)}
       />
     );
   }

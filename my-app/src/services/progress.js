@@ -92,10 +92,19 @@ export async function getLastOpened() {
   return null;
 }
 
+export async function getUserProgress(uid) {
+  if (!uid || !isFirebaseConfigured) return [];
+  const snapshot = await getDocs(collection(db, 'users', uid, 'progress'));
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  }));
+}
+
 /**
  * Menyimpan materi yang baru dibuka / ditekan "Mulai belajar".
  */
-export async function saveOpened(materiId) {
+export async function saveOpened(materiId, uid = auth.currentUser?.uid) {
   const dataToSave = { materiId, progress: 0 };
 
   // Simpan ke local storage selalu untuk offline support
@@ -113,22 +122,20 @@ export async function saveOpened(materiId) {
   }
 
   // Simpan ke Firestore
-  if (isFirebaseConfigured) {
+  if (isFirebaseConfigured && uid) {
     try {
-      const uid = await getUid();
-      if (uid && !uid.startsWith('local_')) {
-        const docRef = doc(db, 'users', uid, 'progress', materiId);
-        await setDoc(
-          docRef,
-          {
-            materiId,
-            lastOpenedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+      const docRef = doc(db, 'users', uid, 'progress', materiId);
+      await setDoc(
+        docRef,
+        {
+          materiId,
+          lastOpenedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     } catch (err) {
       console.warn('Gagal menyimpan materi dibuka ke Firestore:', err?.message);
+      throw err;
     }
   }
 }
@@ -136,7 +143,12 @@ export async function saveOpened(materiId) {
 /**
  * Menyimpan progres belajar materi (nilai 0 sampai 1).
  */
-export async function saveProgress(materiId, progress) {
+export async function saveProgress(
+  materiId,
+  progress,
+  completed = null,
+  uid = auth.currentUser?.uid,
+) {
   try {
     await AsyncStorage.setItem(
       STORAGE_KEY_LAST_OPENED,
@@ -146,24 +158,22 @@ export async function saveProgress(materiId, progress) {
     // abaikan kesalahan storage lokal
   }
 
-  if (isFirebaseConfigured) {
+  if (isFirebaseConfigured && uid) {
     try {
-      const uid = await getUid();
-      if (uid && !uid.startsWith('local_')) {
-        const docRef = doc(db, 'users', uid, 'progress', materiId);
-        await setDoc(
-          docRef,
-          {
-            materiId,
-            progress,
-            lastOpenedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+      const docRef = doc(db, 'users', uid, 'progress', materiId);
+      await setDoc(
+        docRef,
+        {
+          materiId,
+          progress,
+          ...(completed === null ? {} : { completed }),
+          lastOpenedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     } catch (err) {
       console.warn('Gagal menyimpan progres ke Firestore:', err?.message);
+      throw err;
     }
   }
 }
-
