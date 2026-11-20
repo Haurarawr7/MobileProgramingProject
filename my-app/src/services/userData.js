@@ -8,8 +8,36 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import {
+  addDays,
+  getActiveStreakCount,
+  getCurrentWeekDateKeys,
+  toKey,
+} from '../utils/streak';
 
 const userDocument = (uid) => doc(db, 'users', uid);
+
+function getStreakUpdate(account, today, date) {
+  const lastActivityDate = account.lastActivityDate || null;
+  const currentStreak = account.currentStreak || 0;
+  const currentWeek = getCurrentWeekDateKeys();
+  const streakDays = (account.streakDays || []).filter((day) =>
+    currentWeek.includes(day),
+  );
+
+  if (!streakDays.includes(today)) streakDays.push(today);
+
+  return {
+    currentStreak:
+      lastActivityDate === today
+        ? Math.max(currentStreak, 1)
+        : lastActivityDate === toKey(addDays(date, -1))
+          ? currentStreak + 1
+          : 1,
+    lastActivityDate: today,
+    streakDays,
+  };
+}
 
 export async function syncUserProfile(user) {
   const ref = userDocument(user.uid);
@@ -31,6 +59,9 @@ export async function syncUserProfile(user) {
       grade: '',
       points: 0,
       quizCount: 0,
+      currentStreak: 0,
+      lastActivityDate: null,
+      streakDays: [],
       rewardedActivities: [],
       unlockedStories: [],
       createdAt: serverTimestamp(),
@@ -77,6 +108,10 @@ export function subscribeUserData(uid, onUpdate, onError) {
 
     onUpdate({
       ...profile,
+      currentStreak: getActiveStreakCount(
+        profile.currentStreak,
+        profile.lastActivityDate,
+      ),
       readingProgress,
       completedMateri,
       activities,
@@ -147,7 +182,21 @@ export async function recordLearningActivity(uid, {
 
     const account = accountSnapshot.exists() ? accountSnapshot.data() : {};
     const rewardedActivities = account.rewardedActivities || [];
+    const now = new Date();
+    const today = toKey(now);
+    const streakUpdate = getStreakUpdate(account, today, now);
     if (activitySnapshot.exists()) {
+      if (
+        account.lastActivityDate !== today ||
+        !account.streakDays?.includes(today) ||
+        account.currentStreak == null
+      ) {
+        transaction.set(
+          accountRef,
+          { ...streakUpdate, updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      }
       return { points: account.points || 0, rewarded: false };
     }
 
@@ -166,6 +215,7 @@ export async function recordLearningActivity(uid, {
       accountRef,
       {
         points,
+        ...streakUpdate,
         ...(result.kind === 'quiz'
           ? { quizCount: (account.quizCount || 0) + 1 }
           : {}),

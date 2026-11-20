@@ -516,6 +516,8 @@ export default function App() {
           lastProgress={readingProgress[lastOpenedId] || 0}
           learningStats={learningStats}
           activities={userData?.activities || []}
+          streakDays={userData?.streakDays || []}
+          currentStreak={userData?.currentStreak || 0}
           userName={currentUser?.name || 'Siswa'}
           points={points}
           onGoMateri={() => {

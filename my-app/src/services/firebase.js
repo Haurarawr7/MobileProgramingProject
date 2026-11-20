@@ -22,7 +22,7 @@ export const isFirebaseConfigured = Boolean(
 
 if (!isFirebaseConfigured) {
   throw new Error(
-    'Firebase is not configured. Copy my-app/.env.example to my-app/.env and fill in the Firebase values.',
+    'Firebase configuration is missing from this app bundle. Confirm the values in my-app/.env, stop Expo, then restart it from my-app with npx expo start --clear.',
   );
 }
 

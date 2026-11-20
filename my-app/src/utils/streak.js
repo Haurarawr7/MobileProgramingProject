@@ -17,6 +17,22 @@ export function addDays(date, days) {
   return res;
 }
 
+export function getCurrentWeekDateKeys(date = new Date()) {
+  const dayOfWeek = date.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = addDays(date, mondayOffset);
+  return Array.from({ length: 7 }, (_, index) => toKey(addDays(monday, index)));
+}
+
+export function getActiveStreakCount(currentStreak, lastActivityDate, date = new Date()) {
+  if (!lastActivityDate) return 0;
+  const today = toKey(date);
+  const yesterday = toKey(addDays(date, -1));
+  return lastActivityDate === today || lastActivityDate === yesterday
+    ? currentStreak || 0
+    : 0;
+}
+
 /**
  * Parsing string 'YYYY-MM-DD' menjadi objek Date lokal (jam 00:00:00).
  */
@@ -122,4 +138,3 @@ export function computeStreaks(activeDaysSet) {
     weekDays,
   };
 }
-

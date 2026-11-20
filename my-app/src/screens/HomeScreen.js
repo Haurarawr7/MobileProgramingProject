@@ -1,41 +1,57 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TextInput,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { ILLUSTRATION } from '../constants/assets';
-import {
-  STREAK_TOTAL,
-  STREAK_ACTIVE,
-} from '../constants/data';
+import { STREAK_TOTAL } from '../constants/data';
+import { getCurrentWeekDateKeys } from '../utils/streak';
 import common from '../styles/common';
 import SectionHeader from '../components/SectionHeader';
 import SummaryCard from '../components/SummaryCard';
 
-function StreakBar({ total, active }) {
+function StreakBar({ days = [], currentStreak = 0 }) {
+  const weekDateKeys = getCurrentWeekDateKeys();
+  const activeDays = new Set(days);
+  const labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
   return (
-    <View style={styles.streakRow}>
-      {Array.from({ length: total }).map((_, i) => {
-        const filled = i < active;
-        const lineFilled = i < active - 1;
-        return (
-          <React.Fragment key={i}>
-            <View style={[styles.streakDot, filled && styles.streakDotActive]} />
-            {i < total - 1 && (
-              <View
-                style={[styles.streakLine, lineFilled && styles.streakLineActive]}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
+    <View style={styles.streakContainer}>
+      <Text style={styles.streakLabel}>
+        {currentStreak > 0
+          ? `${currentStreak} hari berturut-turut`
+          : 'Mulai streak belajarmu hari ini'}
+      </Text>
+      <View style={styles.streakRow}>
+        {Array.from({ length: STREAK_TOTAL }).map((_, i) => {
+          const filled = activeDays.has(weekDateKeys[i]);
+          const lineFilled =
+            i < STREAK_TOTAL - 1 &&
+            filled &&
+            activeDays.has(weekDateKeys[i + 1]);
+          return (
+            <React.Fragment key={weekDateKeys[i]}>
+              <View style={[styles.streakDot, filled && styles.streakDotActive]} />
+              {i < STREAK_TOTAL - 1 && (
+                <View
+                  style={[styles.streakLine, lineFilled && styles.streakLineActive]}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </View>
+      <View style={styles.streakWeekLabels}>
+        {labels.map((label, index) => (
+          <Text key={weekDateKeys[index]} style={styles.streakWeekLabel}>
+            {label}
+          </Text>
+        ))}
+      </View>
     </View>
   );
 }
@@ -103,9 +119,9 @@ export default function HomeScreen({
   learningStats,
   activities = [],
   userName = 'Siswa',
+  streakDays = [],
+  currentStreak = 0,
 }) {
-  const [query, setQuery] = useState('');
-
   return (
     <ScrollView
       contentContainerStyle={common.content}
@@ -149,7 +165,7 @@ export default function HomeScreen({
           />
         ))}
       </View>
-      <StreakBar total={STREAK_TOTAL} active={STREAK_ACTIVE} />
+      <StreakBar days={streakDays} currentStreak={currentStreak} />
       <SectionHeader />
       {/* CTA Kuis */}
       <TouchableOpacity
@@ -195,7 +211,25 @@ const styles = StyleSheet.create({
   emptyActivity: { fontSize: 13, color: COLORS.text, paddingVertical: 12 },
 
   // Streak
-  streakRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
+  streakContainer: { marginBottom: 28 },
+  streakLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 10,
+  },
+  streakRow: { flexDirection: 'row', alignItems: 'center' },
+  streakWeekLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  streakWeekLabel: {
+    width: 24,
+    textAlign: 'center',
+    fontSize: 10,
+    color: COLORS.text,
+  },
   streakDot: {
     width: 16,
     height: 16,
