@@ -33,6 +33,7 @@ import MiniGame4 from './src/screens/inMiniGame4';
 import MiniGame5 from './src/screens/inMiniGame5';
 import MiniGame6 from './src/screens/inMiniGame6';
 import ProfileScreen from './src/screens/ProfileScreen';
+import InfoScreen from './src/screens/InfoScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import DynamicFormScreen from './src/screens/DynamicFormScreen';
@@ -483,8 +484,13 @@ export default function App() {
           points={points}
           learningStats={learningStats}
           onSaveProfile={handleProfileSave}
+          onOpenInfo={navigateTo}
         />
       );
+      break;
+    case 'help':
+    case 'about':
+      screen = <InfoScreen type={activeTab} onBack={goBack} />;
       break;
     case 'leaderboard':
       screen = <LeaderboardScreen user={currentUser} points={points} />;

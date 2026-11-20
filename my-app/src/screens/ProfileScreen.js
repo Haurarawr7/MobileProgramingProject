@@ -30,6 +30,7 @@ export default function ProfileScreen({
   user,
   learningStats = EMPTY_LEARNING_STATS,
   onSaveProfile,
+  onOpenInfo,
 }) {
   const [notif, setNotif] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -40,6 +41,15 @@ export default function ProfileScreen({
   const grade = profileDraft?.grade ?? user?.grade ?? '';
   const displayName = user?.name || 'Siswa';
   const initial = displayName.charAt(0).toUpperCase();
+
+  const startEditing = () => {
+    setProfileDraft({
+      name: user?.name || '',
+      school: user?.school || '',
+      grade: user?.grade || '',
+    });
+    setEditing(true);
+  };
 
   const saveProfile = async () => {
     if (!name.trim()) {
@@ -125,12 +135,7 @@ export default function ProfileScreen({
               setEditing(false);
               setProfileDraft(null);
             } else {
-              setProfileDraft({
-                name: user?.name || '',
-                school: user?.school || '',
-                grade: user?.grade || '',
-              });
-              setEditing(true);
+              startEditing();
             }
           }}
           hitSlop={10}
@@ -231,6 +236,18 @@ export default function ProfileScreen({
               i < MENU.length - 1 && common.activityDivider,
             ]}
             activeOpacity={0.7}
+            onPress={() => {
+              if (m.id === 'edit') {
+                if (editing) {
+                  setEditing(false);
+                  setProfileDraft(null);
+                } else {
+                  startEditing();
+                }
+                return;
+              }
+              onOpenInfo?.(m.id);
+            }}
           >
             <Ionicons name={m.icon} size={22} color={COLORS.text} />
             <Text style={styles.menuLabel}>{m.label}</Text>
