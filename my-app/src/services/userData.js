@@ -65,7 +65,9 @@ export async function syncUserProfile(user) {
         existing.currentStreak >= 0
         ? existing.currentStreak
         : 0,
-      lastActivityDate: existing.lastActivityDate || null,
+      lastActivityDate: typeof existing.lastActivityDate === 'string'
+        ? existing.lastActivityDate
+        : null,
       streakDays: [...new Set(
         (Array.isArray(existing.streakDays) ? existing.streakDays : [])
           .filter((date) => typeof date === 'string' && weekDates.includes(date)),
@@ -76,7 +78,9 @@ export async function syncUserProfile(user) {
       )],
       unlockedStories: [...new Set(
         (Array.isArray(existing.unlockedStories) ? existing.unlockedStories : [])
-          .filter((storyId) => Object.hasOwn(STORY_COSTS, storyId)),
+          .filter((storyId) =>
+            Object.prototype.hasOwnProperty.call(STORY_COSTS, storyId),
+          ),
       )],
       createdAt: existing.createdAt || serverTimestamp(),
       updatedAt: serverTimestamp(),

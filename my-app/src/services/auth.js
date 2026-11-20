@@ -266,7 +266,10 @@ export async function saveAuthenticatedProfile(profile) {
     return { success: true, user: userData };
   } catch (error) {
     console.warn('Gagal menyimpan perubahan profil:', error);
-    return { success: false, error: formatAuthError(error.code) };
+    const message = error.code?.startsWith('auth/')
+      ? formatAuthError(error.code)
+      : error.message || 'Periksa koneksi internet lalu coba lagi.';
+    return { success: false, error: message };
   }
 }
 
