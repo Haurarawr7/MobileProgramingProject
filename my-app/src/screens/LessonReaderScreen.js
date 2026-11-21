@@ -67,6 +67,8 @@ export default function LessonReaderScreen({
   onProgress,
   onComplete,
   onWatchVideo,
+  showLessonActions = true,
+  backLabel = 'Kembali ke materi',
 }) {
   const [readingProgress, setReadingProgress] = useState(progress);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
@@ -149,14 +151,16 @@ export default function LessonReaderScreen({
         <Text style={styles.title}>{materi.title}</Text>
         <Text style={styles.summary}>{materi.summary}</Text>
 
-        <TouchableOpacity
-          style={styles.videoButton}
-          activeOpacity={0.85}
-          onPress={() => onWatchVideo?.(materi.id)}
-        >
-          <Ionicons name="play-circle-outline" size={22} color={COLORS.ink} />
-          <Text style={styles.videoButtonText}>Tonton video pelajaran</Text>
-        </TouchableOpacity>
+        {showLessonActions ? (
+          <TouchableOpacity
+            style={styles.videoButton}
+            activeOpacity={0.85}
+            onPress={() => onWatchVideo?.(materi.id)}
+          >
+            <Ionicons name="play-circle-outline" size={22} color={COLORS.ink} />
+            <Text style={styles.videoButtonText}>Tonton video pelajaran</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {materi.sections.length > 0 ? (
           <View style={styles.subchapterBox}>
@@ -219,24 +223,26 @@ export default function LessonReaderScreen({
           </View>
         ))}
 
-        {completed ? (
+        {showLessonActions && completed ? (
           <Text style={styles.completed}>Materi ini sudah selesai dibaca.</Text>
         ) : null}
-        <TouchableOpacity
-          style={common.quizButton}
-          activeOpacity={0.85}
-          onPress={() => onComplete?.(materi.id)}
-        >
-          <Text style={common.quizButtonText}>
-            {completed ? 'Ulangi kuis materi' : 'Selesai membaca & kerjakan kuis'}
-          </Text>
-        </TouchableOpacity>
+        {showLessonActions ? (
+          <TouchableOpacity
+            style={common.quizButton}
+            activeOpacity={0.85}
+            onPress={() => onComplete?.(materi.id)}
+          >
+            <Text style={common.quizButtonText}>
+              {completed ? 'Ulangi kuis materi' : 'Selesai membaca & kerjakan kuis'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={styles.backButton}
           activeOpacity={0.85}
           onPress={onBack}
         >
-          <Text style={styles.backButtonText}>Kembali ke materi</Text>
+          <Text style={styles.backButtonText}>{backLabel}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

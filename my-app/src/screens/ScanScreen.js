@@ -10,6 +10,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { COLORS } from '../constants/colors';
 import { isValidFormConfig } from '../utils/forms';
+import {
+  createLessonFromTopic,
+  isValidQrLesson,
+  isValidQrLessonTopic,
+  SUPPORTED_LESSON_TOPICS,
+} from '../utils/lessonQr';
 import common from '../styles/common';
 
 export default function ScanScreen({ onBack, onScanned, onGoGenerate }) {
@@ -20,30 +26,63 @@ export default function ScanScreen({ onBack, onScanned, onGoGenerate }) {
     if (scanned) return;
 
     setScanned(true);
-    let form;
+    let payload;
     try {
       if (typeof data !== 'string' || data.length > 5000) {
-        throw new Error('Invalid QR form data');
+        throw new Error('Invalid QR data');
       }
-      form = JSON.parse(data);
+      payload = JSON.parse(data);
     } catch {
-      Alert.alert('QR tidak valid', 'QR ini bukan form yang didukung.');
+      Alert.alert('QR tidak valid', 'QR ini bukan materi atau form yang didukung.');
       setScanned(false);
       return;
     }
 
-    if (!isValidFormConfig(form)) {
-      Alert.alert('QR tidak valid', 'QR ini bukan form yang didukung.');
+    if (isValidQrLessonTopic(payload)) {
+      const lesson = createLessonFromTopic(payload.topic);
+      if (!lesson) {
+        Alert.alert(
+          'Topik belum didukung',
+          `QR berisi topik yang belum tersedia. Topik yang didukung: ${SUPPORTED_LESSON_TOPICS}.`,
+        );
+        setScanned(false);
+        return;
+      }
+      onScanned({ type: 'lesson', lesson });
+      return;
+    }
+
+    if (isValidQrLesson(payload)) {
+      onScanned({
+        type: 'lesson',
+        lesson: {
+          ...payload,
+          title: payload.title.trim(),
+          topic: payload.topic.trim(),
+          level: payload.level.trim(),
+          duration: payload.duration.trim(),
+          summary: payload.summary.trim(),
+          content: payload.content.trim(),
+        },
+      });
+      return;
+    }
+
+    if (!isValidFormConfig(payload)) {
+      Alert.alert('QR tidak valid', 'QR ini bukan materi atau form yang didukung.');
       setScanned(false);
       return;
     }
 
     onScanned({
-      title: form.title.trim(),
-      fields: form.fields.map((field) => ({
-        type: field.type,
-        label: field.label.trim(),
-      })),
+      type: 'form',
+      form: {
+        title: payload.title.trim(),
+        fields: payload.fields.map((field) => ({
+          type: field.type,
+          label: field.label.trim(),
+        })),
+      },
     });
   };
 
@@ -89,7 +128,7 @@ export default function ScanScreen({ onBack, onScanned, onGoGenerate }) {
         onPress={onGoGenerate}
       >
         <MaterialCommunityIcons name="qrcode" size={20} color={COLORS.secondary} />
-        <Text style={common.logoutText}>Buat QR Form</Text>
+        <Text style={common.logoutText}>Buat QR Pelajaran</Text>
       </TouchableOpacity>
     </View>
   );

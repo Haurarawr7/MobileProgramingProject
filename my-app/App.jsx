@@ -62,6 +62,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [navigationStack, setNavigationStack] = useState(['auth-loading']);
   const [scannedForm, setScannedForm] = useState(null);
+  const [scannedLesson, setScannedLesson] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
   const [selectedMateriId, setSelectedMateriId] = useState(null);
   const [selectedPracticeGameId, setSelectedPracticeGameId] = useState(null);
@@ -500,8 +501,13 @@ export default function App() {
         <ScanScreen
           onBack={goBack}
           onGoGenerate={() => navigateTo('generate')}
-          onScanned={(form) => {
-            setScannedForm(form);
+          onScanned={(result) => {
+            if (result.type === 'lesson') {
+              setScannedLesson(result.lesson);
+              navigateTo('qr-lesson');
+              return;
+            }
+            setScannedForm(result.form);
             navigateTo('form');
           }}
         />
@@ -509,6 +515,33 @@ export default function App() {
       break;
     case 'form':
       screen = <DynamicFormScreen config={scannedForm} onBack={goBack} />;
+      break;
+    case 'qr-lesson':
+      screen = scannedLesson ? (
+        <LessonReaderScreen
+          materi={{
+            ...scannedLesson,
+            id: 'qr-lesson',
+            sections: [
+              {
+                heading: 'Isi Pelajaran',
+                blocks: scannedLesson.content
+                  .split(/\n+/)
+                  .map((text) => text.trim())
+                  .filter(Boolean)
+                  .map((text) => ({ type: 'p', text })),
+              },
+            ],
+          }}
+          onBack={goBack}
+          showLessonActions={false}
+          backLabel="Kembali ke pemindai"
+        />
+      ) : (
+        <View style={common.emptyBox}>
+          <Text style={common.emptyDesc}>Materi QR tidak ditemukan.</Text>
+        </View>
+      );
       break;
     case 'generate':
       screen = <GenerateScreen onBack={goBack} />;

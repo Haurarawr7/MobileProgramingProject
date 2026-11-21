@@ -136,7 +136,7 @@ export default function HomeScreen({
         <View style={styles.headerActions}>
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel="Scan QR form"
+            accessibilityLabel="Scan QR pelajaran atau form"
             style={common.iconButton}
             onPress={onGoScan}
           >
