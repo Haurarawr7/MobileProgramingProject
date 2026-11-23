@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import { COLORS } from '../constants/colors';
+import { FONTS } from '../constants/fonts';
 import {
   loginWithEmail,
   loginAsGuest,
@@ -139,132 +141,134 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo Placeholder */}
-        <View style={styles.logoBox}>
-          <View style={styles.logoCross1} />
-          <View style={styles.logoCross2} />
-        </View>
+        <View style={styles.content}>
+          <View style={styles.brandRow}>
+            <View style={styles.logoBox}>
+              <Text style={styles.logoText}>{'<>'}</Text>
+            </View>
+            <View style={styles.brandBadge}>
+              <Text style={styles.brandBadgeText}>Belajar interaktif</Text>
+            </View>
+          </View>
 
-        {/* Title & Subtitle */}
-        <Text style={styles.title}>Selamat datang di{'\n'}Logiterm</Text>
-        <Text style={styles.subtitle}>
-          Belajar logika, algoritma, dan OOP dengan mini-game dan simulasi interaktif.{'\n'}
-          Masuk untuk melanjutkan belajar.
-        </Text>
+          <Text style={styles.title}>Selamat datang di{'\n'}Logiterm</Text>
+          <Text style={styles.subtitle}>
+            Masuk untuk melanjutkan materi, mini-game, dan perkembangan belajarmu.
+          </Text>
 
-        {/* Form Email */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Masukkan email Anda"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        {/* Form Kata Sandi */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Kata sandi</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Masukkan kata sandi"
-              placeholderTextColor="#9CA3AF"
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              value={password}
-              onChangeText={setPassword}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword((prev) => !prev)}
-              style={styles.eyeButton}
-              hitSlop={10}
-              accessibilityLabel="Lihat kata sandi"
-            >
-              <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={22}
-                color="#6B7280"
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color={COLORS.gray} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan email Anda"
+                placeholderTextColor={COLORS.gray}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={setEmail}
               />
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Kata sandi</Text>
+            <View style={styles.passwordContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.gray} />
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Masukkan kata sandi"
+                placeholderTextColor={COLORS.gray}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={styles.eyeButton}
+                hitSlop={10}
+                accessibilityLabel={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color={COLORS.ink}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.rowOptions}>
+            <TouchableOpacity
+              style={styles.rememberRow}
+              activeOpacity={0.8}
+              onPress={() => setRememberMe((prev) => !prev)}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+                {rememberMe && <Ionicons name="checkmark" size={12} color={COLORS.ink} />}
+              </View>
+              <Text style={styles.rememberText}>Ingat saya</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleForgotPassword} hitSlop={8}>
+              <Text style={styles.forgotText}>Lupa kata sandi?</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Ingat Saya & Lupa Kata Sandi */}
-        <View style={styles.rowOptions}>
           <TouchableOpacity
-            style={styles.rememberRow}
-            activeOpacity={0.8}
-            onPress={() => setRememberMe((prev) => !prev)}
+            style={styles.primaryButton}
+            activeOpacity={0.85}
+            onPress={handleLogin}
+            disabled={loading}
           >
-            <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-              {rememberMe && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
-            </View>
-            <Text style={styles.rememberText}>Ingat saya</Text>
+            {loading ? (
+              <ActivityIndicator color={COLORS.ink} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Lanjutkan belajar</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleForgotPassword} hitSlop={8}>
-            <Text style={styles.forgotText}>Lupa kata sandi?</Text>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>atau</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <GoogleAuthButton
+            action="Masuk"
+            loading={googleLoading}
+            onLoadingChange={setGoogleLoading}
+            onTokens={handleGoogleResponse}
+            buttonStyle={styles.googleButton}
+            contentStyle={styles.googleButtonContent}
+            textStyle={styles.googleButtonText}
+          />
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            activeOpacity={0.85}
+            onPress={handleGuest}
+            disabled={guestLoading}
+          >
+            {guestLoading ? (
+              <ActivityIndicator color={COLORS.ink} />
+            ) : (
+              <>
+                <Ionicons name="person-outline" size={18} color={COLORS.ink} />
+                <Text style={styles.secondaryButtonText}>Coba sebagai tamu</Text>
+              </>
+            )}
           </TouchableOpacity>
-        </View>
 
-        {/* Tombol Utama: Lanjutkan Belajar */}
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.85}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Lanjutkan belajar</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Divider "atau" */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>atau</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Tombol Masuk dengan Google */}
-        <GoogleAuthButton
-          action="Masuk"
-          loading={googleLoading}
-          onLoadingChange={setGoogleLoading}
-          onTokens={handleGoogleResponse}
-          buttonStyle={styles.googleButton}
-          contentStyle={styles.googleButtonContent}
-          textStyle={styles.googleButtonText}
-        />
-
-        {/* Tombol Sekunder: Coba sebagai tamu */}
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          activeOpacity={0.85}
-          onPress={handleGuest}
-          disabled={guestLoading}
-        >
-          {guestLoading ? (
-            <ActivityIndicator color="#1F2937" />
-          ) : (
-            <Text style={styles.secondaryButtonText}>Coba sebagai tamu</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Footer: Belum punya akun? Daftar */}
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Belum punya akun? </Text>
-          <TouchableOpacity onPress={onGoRegister} hitSlop={8}>
-            <Text style={styles.footerLink}>Daftar</Text>
-          </TouchableOpacity>
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Belum punya akun? </Text>
+            <TouchableOpacity onPress={onGoRegister} hitSlop={8}>
+              <Text style={styles.footerLink}>Daftar sekarang</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -274,100 +278,121 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
 const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 36,
-    paddingBottom: 40,
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
   },
-  logoBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 12,
-    backgroundColor: '#EBEBEB',
-    marginBottom: 24,
-    position: 'relative',
-    overflow: 'hidden',
+  content: {
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
   },
-  logoCross1: {
-    position: 'absolute',
-    top: -10,
-    left: 33,
-    width: 1,
-    height: 90,
-    backgroundColor: '#D1D5DB',
-    transform: [{ rotate: '45deg' }],
-  },
-  logoCross2: {
-    position: 'absolute',
-    top: -10,
-    left: 33,
-    width: 1,
-    height: 90,
-    backgroundColor: '#D1D5DB',
-    transform: [{ rotate: '-45deg' }],
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#1E1E1E',
-    lineHeight: 38,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 13.5,
-    lineHeight: 21,
-    color: '#555555',
-    marginBottom: 28,
-  },
-  fieldGroup: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    paddingHorizontal: 16,
-    fontSize: 14.5,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-  },
-  passwordContainer: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  logoBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    fontFamily: FONTS.sansSemi,
+    fontSize: 16,
+    color: COLORS.ink,
+  },
+  brandBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.sky,
+  },
+  brandBadgeText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 11,
+    color: COLORS.ink,
+  },
+  title: {
+    fontFamily: FONTS.serif,
+    fontSize: 44,
+    lineHeight: 48,
+    color: COLORS.ink,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: COLORS.text,
+    marginBottom: 24,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.ink,
+    marginBottom: 7,
+  },
+  inputContainer: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.white,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    color: COLORS.ink,
+  },
+  passwordContainer: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.white,
   },
   passwordInput: {
     flex: 1,
     height: '100%',
-    fontSize: 14.5,
-    color: '#111827',
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   eyeButton: {
-    paddingLeft: 8,
-    paddingVertical: 4,
+    padding: 4,
   },
   rowOptions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
-    marginBottom: 24,
+    marginTop: 0,
+    marginBottom: 20,
   },
   rememberRow: {
     flexDirection: 'row',
@@ -376,64 +401,68 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#9CA3AF',
+    borderColor: COLORS.ink,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
+    backgroundColor: COLORS.white,
   },
   checkboxActive: {
-    backgroundColor: '#374151',
-    borderColor: '#374151',
+    backgroundColor: COLORS.yellow,
   },
   rememberText: {
-    fontSize: 13,
-    color: '#4B5563',
+    fontFamily: FONTS.sans,
+    fontSize: 12.5,
+    color: COLORS.text,
   },
   forgotText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1E1E1E',
+    fontFamily: FONTS.sansMedium,
+    fontSize: 12.5,
+    color: COLORS.ink,
     textDecorationLine: 'underline',
   },
   primaryButton: {
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#3A3A3C',
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.yellow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   primaryButtonText: {
+    fontFamily: FONTS.sansSemi,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.ink,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
+    height: 1.5,
+    backgroundColor: COLORS.sky,
   },
   dividerText: {
-    marginHorizontal: 14,
-    fontSize: 13,
-    color: '#6B7280',
+    marginHorizontal: 12,
+    fontFamily: FONTS.sans,
+    fontSize: 12,
+    color: COLORS.text,
   },
   googleButton: {
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   googleButtonContent: {
     flexDirection: 'row',
@@ -441,38 +470,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   googleButtonText: {
-    fontSize: 14.5,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontFamily: FONTS.sansMedium,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   secondaryButton: {
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    gap: 8,
+    marginBottom: 24,
   },
   secondaryButtonText: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontFamily: FONTS.sansMedium,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   footerText: {
-    fontSize: 13.5,
-    color: '#4B5563',
+    fontFamily: FONTS.sans,
+    fontSize: 12.5,
+    color: COLORS.text,
   },
   footerLink: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#111827',
+    fontFamily: FONTS.sansSemi,
+    fontSize: 12.5,
+    color: COLORS.ink,
     textDecorationLine: 'underline',
   },
 });

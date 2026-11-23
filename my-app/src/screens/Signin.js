@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import { COLORS } from '../constants/colors';
+import { FONTS } from '../constants/fonts';
 import { registerWithEmail, loginWithGoogleCredential } from '../services/auth';
 
 export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
@@ -123,47 +125,56 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
         </TouchableOpacity>
 
         {/* Judul & Subjudul */}
+        <View style={styles.brandBadge}>
+          <Text style={styles.brandBadgeText}>Mulai belajar hari ini</Text>
+        </View>
         <Text style={styles.title}>Buat akun Logiterm</Text>
         <Text style={styles.subtitle}>
-          Buat akun untuk memulai belajar algoritma, membuka mini-game logika, dan
-          menyelesaikan tantangan interaktif di Logithm.
+          Pelajari algoritma, selesaikan mini-game logika, dan pantau setiap perkembanganmu.
         </Text>
 
         {/* Input: Nama Lengkap */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Nama lengkap</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Masukkan nama lengkap"
-            placeholderTextColor="#9CA3AF"
-            value={name}
-            onChangeText={setName}
-          />
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color={COLORS.gray} />
+            <TextInput
+              style={styles.input}
+              placeholder="Masukkan nama lengkap"
+              placeholderTextColor={COLORS.gray}
+              value={name}
+              onChangeText={setName}
+            />
+          </View>
         </View>
 
         {/* Input: Email */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Masukkan email Anda"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={setEmail}
-          />
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color={COLORS.gray} />
+            <TextInput
+              style={styles.input}
+              placeholder="Masukkan email Anda"
+              placeholderTextColor={COLORS.gray}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
         </View>
 
         {/* Input: Kata Sandi */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Kata sandi</Text>
           <View style={styles.passwordContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color={COLORS.gray} />
             <TextInput
               style={styles.passwordInput}
               placeholder="Buat kata sandi"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.gray}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               value={password}
@@ -173,11 +184,12 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
               onPress={() => setShowPassword((prev) => !prev)}
               style={styles.eyeButton}
               hitSlop={10}
+              accessibilityLabel={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
             >
               <Ionicons
                 name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={22}
-                color="#6B7280"
+                size={20}
+                color={COLORS.ink}
               />
             </TouchableOpacity>
           </View>
@@ -188,10 +200,11 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Konfirmasi kata sandi</Text>
           <View style={styles.passwordContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color={COLORS.gray} />
             <TextInput
               style={styles.passwordInput}
               placeholder="Ulangi kata sandi"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.gray}
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
               value={confirmPassword}
@@ -201,11 +214,12 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
               onPress={() => setShowConfirmPassword((prev) => !prev)}
               style={styles.eyeButton}
               hitSlop={10}
+              accessibilityLabel={showConfirmPassword ? 'Sembunyikan konfirmasi kata sandi' : 'Lihat konfirmasi kata sandi'}
             >
               <Ionicons
                 name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={22}
-                color="#6B7280"
+                size={20}
+                color={COLORS.ink}
               />
             </TouchableOpacity>
           </View>
@@ -218,7 +232,7 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
           onPress={() => setAgreeTerms((prev) => !prev)}
         >
           <View style={[styles.checkbox, agreeTerms && styles.checkboxActive]}>
-            {agreeTerms && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+            {agreeTerms && <Ionicons name="checkmark" size={12} color={COLORS.ink} />}
           </View>
           <Text style={styles.agreementText}>
             Saya menyetujui Syarat & Ketentuan serta Kebijakan Privasi.
@@ -233,7 +247,7 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
             <Text style={styles.primaryButtonText}>Mulai belajar</Text>
           )}
@@ -259,7 +273,7 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
 
         {/* Footer: Sudah punya akun? Masuk */}
         <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Sudah punya akun Logithm? </Text>
+          <Text style={styles.footerText}>Sudah punya akun? </Text>
           <TouchableOpacity onPress={onGoLogin} hitSlop={8}>
             <Text style={styles.footerLink}>Masuk</Text>
           </TouchableOpacity>
@@ -272,10 +286,13 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
 const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 40,
@@ -283,134 +300,172 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.white,
+    marginBottom: 18,
     gap: 8,
   },
   backText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.ink,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#1E1E1E',
+  brandBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.sky,
     marginBottom: 10,
   },
-  subtitle: {
-    fontSize: 13.5,
-    lineHeight: 21,
-    color: '#555555',
-    marginBottom: 26,
+  brandBadgeText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 11,
+    color: COLORS.ink,
   },
-  fieldGroup: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+  title: {
+    fontFamily: FONTS.serif,
+    fontSize: 42,
+    lineHeight: 46,
+    color: COLORS.ink,
     marginBottom: 8,
   },
-  input: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    paddingHorizontal: 16,
-    fontSize: 14.5,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
+  subtitle: {
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    lineHeight: 21,
+    color: COLORS.text,
+    marginBottom: 22,
   },
-  passwordContainer: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+  fieldGroup: {
+    marginBottom: 14,
+  },
+  label: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 13,
+    color: COLORS.ink,
+    marginBottom: 7,
+  },
+  inputContainer: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    gap: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.white,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    color: COLORS.ink,
+  },
+  passwordContainer: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.white,
   },
   passwordInput: {
     flex: 1,
     height: '100%',
-    fontSize: 14.5,
-    color: '#111827',
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   eyeButton: {
-    paddingLeft: 8,
-    paddingVertical: 4,
+    padding: 4,
   },
   helperText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 6,
+    fontFamily: FONTS.sans,
+    fontSize: 11.5,
+    color: COLORS.text,
+    marginTop: 5,
   },
   agreementRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
-    marginBottom: 26,
+    marginTop: 4,
+    marginBottom: 20,
   },
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#9CA3AF',
+    borderColor: COLORS.ink,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
     marginTop: 2,
+    backgroundColor: COLORS.white,
   },
   checkboxActive: {
-    backgroundColor: '#374151',
-    borderColor: '#374151',
+    backgroundColor: COLORS.yellow,
   },
   agreementText: {
     flex: 1,
-    fontSize: 13,
-    color: '#4B5563',
-    lineHeight: 19,
+    fontFamily: FONTS.sans,
+    fontSize: 12.5,
+    color: COLORS.text,
+    lineHeight: 18,
   },
   primaryButton: {
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#3A3A3C',
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.yellow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   primaryButtonText: {
+    fontFamily: FONTS.sansSemi,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.ink,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
+    height: 1.5,
+    backgroundColor: COLORS.sky,
   },
   dividerText: {
-    marginHorizontal: 14,
-    fontSize: 13,
-    color: '#6B7280',
+    marginHorizontal: 12,
+    fontFamily: FONTS.sans,
+    fontSize: 12,
+    color: COLORS.text,
   },
   googleButton: {
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 22,
   },
   googleButtonContent: {
     flexDirection: 'row',
@@ -418,23 +473,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   googleButtonText: {
-    fontSize: 14.5,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontFamily: FONTS.sansMedium,
+    fontSize: 14,
+    color: COLORS.ink,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   footerText: {
-    fontSize: 13.5,
-    color: '#4B5563',
+    fontFamily: FONTS.sans,
+    fontSize: 12.5,
+    color: COLORS.text,
   },
   footerLink: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#111827',
+    fontFamily: FONTS.sansSemi,
+    fontSize: 12.5,
+    color: COLORS.ink,
     textDecorationLine: 'underline',
   },
 });
