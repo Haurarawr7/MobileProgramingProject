@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { ILLUSTRATION } from '../constants/assets';
+import { getMateriIllustration } from '../constants/assets';
 import { MATERI } from '../constants/data';
 import common from '../styles/common';
 
@@ -83,7 +83,7 @@ function MateriCard({
       <View style={styles.mCardBottom}>
         <View style={styles.mImageWrap}>
           <Image
-            source={ILLUSTRATION}
+            source={getMateriIllustration(item.id)}
             style={StyleSheet.absoluteFill}
             resizeMode="contain"
           />
