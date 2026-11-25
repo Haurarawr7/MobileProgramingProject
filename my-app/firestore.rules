@@ -14,6 +14,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/leaderboard/$(userId);
     }
 
+    function isAllowedTeacher() {
+      return request.auth != null &&
+        request.auth.token.email == 'hauraamnun@gmail.com' &&
+        request.auth.token.email_verified == true;
+    }
+
     function hasMatchingLeaderboard(userId, account) {
       return account.isGuest ||
         (existsAfter(leaderboardPath(userId)) &&
@@ -24,13 +30,13 @@ service cloud.firestore {
 
     function validAccount(account, userId) {
       return account.keys().hasAll([
-          'uid', 'email', 'name', 'photoURL', 'isGuest', 'school', 'grade',
+          'uid', 'email', 'name', 'photoURL', 'isGuest', 'role', 'school', 'grade',
           'points', 'lifetimePoints', 'quizCount', 'currentStreak',
           'lastActivityDate', 'streakDays', 'rewardedActivities',
           'unlockedStories', 'createdAt', 'updatedAt'
         ]) &&
         account.keys().hasOnly([
-          'uid', 'email', 'name', 'photoURL', 'isGuest', 'school', 'grade',
+          'uid', 'email', 'name', 'photoURL', 'isGuest', 'role', 'school', 'grade',
           'points', 'lifetimePoints', 'quizCount', 'currentStreak',
           'lastActivityDate', 'streakDays', 'rewardedActivities',
           'unlockedStories', 'createdAt', 'updatedAt'
@@ -42,6 +48,8 @@ service cloud.firestore {
         (account.photoURL == null ||
           (account.photoURL is string && account.photoURL.size() <= 2048)) &&
         account.isGuest is bool &&
+        account.role in ['student', 'teacher'] &&
+        (account.role != 'teacher' || isAllowedTeacher()) &&
         account.school is string && account.school.size() <= 100 &&
         account.grade is string && account.grade.size() <= 40 &&
         account.points is int && account.points >= 0 &&
@@ -115,11 +123,21 @@ service cloud.firestore {
         request.resource.data.uid == resource.data.uid &&
         request.resource.data.email == resource.data.email &&
         request.resource.data.isGuest == resource.data.isGuest &&
+        (
+          request.resource.data.role == resource.data.get(
+            'role', request.resource.data.role
+          ) ||
+          (request.resource.data.role == 'teacher' && isAllowedTeacher()) ||
+          (
+            resource.data.get('role', 'student') == 'teacher' &&
+            request.resource.data.role == 'student'
+          )
+        ) &&
         request.resource.data.createdAt == resource.data.get(
           'createdAt', request.resource.data.createdAt
         ) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'photoURL', 'school', 'grade', 'points', 'lifetimePoints',
+          'name', 'photoURL', 'role', 'school', 'grade', 'points', 'lifetimePoints',
           'quizCount', 'currentStreak', 'lastActivityDate', 'streakDays',
           'rewardedActivities', 'unlockedStories', 'createdAt', 'updatedAt'
         ]) &&

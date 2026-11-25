@@ -15,9 +15,16 @@ import { Ionicons } from '@expo/vector-icons';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
+import { normalizeUserRole } from '../constants/userRoles';
 import { registerWithEmail, loginWithGoogleCredential } from '../services/auth';
 
-export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
+export default function SigninScreen({
+  onBack,
+  onGoLogin,
+  onRegisterSuccess,
+  role,
+}) {
+  const selectedRole = normalizeUserRole(role);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +49,7 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
         console.warn('Could not retrieve Google profile details:', error);
       }
     }
-    const result = await loginWithGoogleCredential(idToken, userInfo);
+    const result = await loginWithGoogleCredential(idToken, userInfo, selectedRole);
     setGoogleLoading(false);
     if (result.success) {
       onRegisterSuccess?.(result.user);
@@ -82,8 +89,16 @@ export default function SigninScreen({ onBack, onGoLogin, onRegisterSuccess }) {
 
     setLoading(true);
     try {
-      const result = await registerWithEmail(name, email, password);
+      const result = await registerWithEmail(name, email, password, selectedRole);
       if (result.success) {
+        if (result.verificationRequired) {
+          Alert.alert(
+            'Verifikasi email',
+            result.verificationMessage,
+            [{ text: 'Mengerti', onPress: onGoLogin }],
+          );
+          return;
+        }
         const syncMessage = result.syncError
           ? `\n\n${result.syncError}`
           : '';

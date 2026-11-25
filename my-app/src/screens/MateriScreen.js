@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
 
   mCardBottom: { flex: 1, padding: 18, paddingTop: 8 },
-  mImageWrap: { flex: 1, marginBottom: 12 },
+  mImageWrap: { flex: 1, minHeight: 120, marginBottom: 12 },
   mActions: { flexDirection: 'row', gap: 10 },
   mButton: {
     flex: 1,

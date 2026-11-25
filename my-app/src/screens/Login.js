@@ -16,13 +16,24 @@ import GoogleAuthButton from '../components/GoogleAuthButton';
 import { COLORS } from '../constants/colors';
 import { FONTS } from '../constants/fonts';
 import {
+  normalizeUserRole,
+  USER_ROLE_LABELS,
+  USER_ROLE_STUDENT,
+} from '../constants/userRoles';
+import {
   loginWithEmail,
   loginAsGuest,
   resetPassword,
   loginWithGoogleCredential,
 } from '../services/auth';
 
-export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
+export default function LoginScreen({
+  onLoginSuccess,
+  onGoRegister,
+  onChooseRole,
+  role,
+}) {
+  const selectedRole = normalizeUserRole(role);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +56,7 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
         console.warn('Could not retrieve Google profile details:', error);
       }
     }
-    const result = await loginWithGoogleCredential(idToken, userInfo);
+    const result = await loginWithGoogleCredential(idToken, userInfo, selectedRole);
     setGoogleLoading(false);
     if (result.success) {
       onLoginSuccess?.(result.user);
@@ -69,7 +80,7 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
 
     setLoading(true);
     try {
-      const result = await loginWithEmail(email, password);
+      const result = await loginWithEmail(email, password, selectedRole);
       if (result.success) {
         onLoginSuccess?.(result.user);
         if (result.syncError) {
@@ -87,6 +98,7 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
   };
 
   const handleGuest = async () => {
+    if (selectedRole !== USER_ROLE_STUDENT) return;
     setGuestLoading(true);
     try {
       const result = await loginAsGuest();
@@ -155,6 +167,16 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
           <Text style={styles.subtitle}>
             Masuk untuk melanjutkan materi, mini-game, dan perkembangan belajarmu.
           </Text>
+          <TouchableOpacity
+            style={styles.roleChoice}
+            onPress={onChooseRole}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="swap-horizontal-outline" size={18} color={COLORS.ink} />
+            <Text style={styles.roleChoiceText}>
+              Masuk sebagai {USER_ROLE_LABELS[selectedRole]} · Ubah peran
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
@@ -247,21 +269,23 @@ export default function LoginScreen({ onLoginSuccess, onGoRegister }) {
             textStyle={styles.googleButtonText}
           />
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.85}
-            onPress={handleGuest}
-            disabled={guestLoading}
-          >
-            {guestLoading ? (
-              <ActivityIndicator color={COLORS.ink} />
-            ) : (
-              <>
-                <Ionicons name="person-outline" size={18} color={COLORS.ink} />
-                <Text style={styles.secondaryButtonText}>Coba sebagai tamu</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {selectedRole === USER_ROLE_STUDENT ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              activeOpacity={0.85}
+              onPress={handleGuest}
+              disabled={guestLoading}
+            >
+              {guestLoading ? (
+                <ActivityIndicator color={COLORS.ink} />
+              ) : (
+                <>
+                  <Ionicons name="person-outline" size={18} color={COLORS.ink} />
+                  <Text style={styles.secondaryButtonText}>Coba sebagai tamu</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null}
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Belum punya akun? </Text>
@@ -338,6 +362,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: COLORS.text,
     marginBottom: 24,
+  },
+  roleChoice: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -12,
+    marginBottom: 20,
+  },
+  roleChoiceText: {
+    fontFamily: FONTS.sansMedium,
+    fontSize: 12,
+    color: COLORS.ink,
+    textDecorationLine: 'underline',
   },
   fieldGroup: {
     marginBottom: 16,

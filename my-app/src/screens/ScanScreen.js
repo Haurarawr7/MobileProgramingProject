@@ -18,7 +18,12 @@ import {
 } from '../utils/lessonQr';
 import common from '../styles/common';
 
-export default function ScanScreen({ onBack, onScanned, onGoGenerate }) {
+export default function ScanScreen({
+  onBack,
+  onScanned,
+  onGoGenerate,
+  canGenerateQr = false,
+}) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -122,14 +127,16 @@ export default function ScanScreen({ onBack, onScanned, onGoGenerate }) {
         </View>
       )}
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        style={[common.logoutButton, styles.scanGenerateButton]}
-        onPress={onGoGenerate}
-      >
-        <MaterialCommunityIcons name="qrcode" size={20} color={COLORS.secondary} />
-        <Text style={common.logoutText}>Buat QR Pelajaran</Text>
-      </TouchableOpacity>
+      {canGenerateQr ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          style={[common.logoutButton, styles.scanGenerateButton]}
+          onPress={onGoGenerate}
+        >
+          <MaterialCommunityIcons name="qrcode" size={20} color={COLORS.secondary} />
+          <Text style={common.logoutText}>Buat QR Pelajaran</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }

@@ -5,6 +5,7 @@ import {
   updateProfile,
   signInAnonymously,
   signOut,
+  sendEmailVerification,
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithCredential,
@@ -12,6 +13,14 @@ import {
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncUserProfile, updateUserProfile } from './userData';
+import {
+  normalizeUserRole,
+  isTeacherEmail,
+  TEACHER_EMAIL,
+  USER_ROLE_LABELS,
+  USER_ROLE_STUDENT,
+  USER_ROLE_TEACHER,
+} from '../constants/userRoles';
 
 const USER_SESSION_KEY = '@user_session';
 
@@ -52,6 +61,7 @@ export async function getSavedUser() {
       name: user.displayName || user.email?.split('@')[0] || 'Tamu',
       photoURL: user.photoURL,
       isGuest: user.isAnonymous,
+      role: USER_ROLE_STUDENT,
     };
     try {
       const syncedUser = await syncUserProfile(userData);
@@ -81,6 +91,7 @@ export async function saveUserSession(userData) {
           'name',
           'photoURL',
           'isGuest',
+          'role',
           'school',
           'grade',
           'points',
@@ -104,9 +115,13 @@ export async function saveUserSession(userData) {
 /**
  * Login dengan Email & Password.
  */
-export async function loginWithEmail(email, password) {
+export async function loginWithEmail(email, password, role = USER_ROLE_STUDENT) {
   const cleanEmail = email.trim().toLowerCase();
+  const selectedRole = normalizeUserRole(role);
 
+  if (selectedRole === USER_ROLE_TEACHER && !isTeacherEmail(cleanEmail)) {
+    return { success: false, error: teacherEmailOnlyMessage() };
+  }
   if (!isFirebaseConfigured) {
     return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
@@ -114,13 +129,30 @@ export async function loginWithEmail(email, password) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
     const user = userCredential.user;
+    if (selectedRole === USER_ROLE_TEACHER && !user.emailVerified) {
+      try {
+        await sendEmailVerification(user);
+      } catch (error) {
+        await rejectAuthenticatedSession('Gagal mengirim email verifikasi.');
+        return { success: false, error: formatAuthError(error.code) };
+      }
+      await rejectAuthenticatedSession('Email Guru belum diverifikasi.');
+      return {
+        success: false,
+        error: `Tautan verifikasi dikirim ke ${cleanEmail}. Verifikasi email lalu masuk kembali sebagai Guru.`,
+      };
+    }
+
     const userData = {
       uid: user.uid,
       email: user.email,
       name: user.displayName || user.email.split('@')[0],
       isGuest: false,
+      role: selectedRole,
+      emailVerified: user.emailVerified,
     };
-    const session = await createUserSession(userData);
+    const session = await createUserSession(userData, selectedRole);
+    if (session.error) return { success: false, error: session.error };
     return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
@@ -130,10 +162,19 @@ export async function loginWithEmail(email, password) {
 /**
  * Registrasi Akun Baru (Buat Akun).
  */
-export async function registerWithEmail(name, email, password) {
+export async function registerWithEmail(
+  name,
+  email,
+  password,
+  role = USER_ROLE_STUDENT,
+) {
   const cleanEmail = email.trim().toLowerCase();
   const cleanName = name.trim();
+  const selectedRole = normalizeUserRole(role);
 
+  if (selectedRole === USER_ROLE_TEACHER && !isTeacherEmail(cleanEmail)) {
+    return { success: false, error: teacherEmailOnlyMessage() };
+  }
   if (!isFirebaseConfigured) {
     return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
@@ -146,13 +187,32 @@ export async function registerWithEmail(name, email, password) {
       await updateProfile(user, { displayName: cleanName });
     }
 
+    if (selectedRole === USER_ROLE_TEACHER && !user.emailVerified) {
+      try {
+        await sendEmailVerification(user);
+      } catch (error) {
+        await rejectAuthenticatedSession('Gagal mengirim email verifikasi.');
+        return { success: false, error: formatAuthError(error.code) };
+      }
+      await rejectAuthenticatedSession('Email Guru belum diverifikasi.');
+      return {
+        success: true,
+        verificationRequired: true,
+        verificationMessage:
+          `Tautan verifikasi dikirim ke ${cleanEmail}. Verifikasi email tersebut, lalu masuk sebagai Guru.`,
+      };
+    }
+
     const userData = {
       uid: user.uid,
       email: user.email,
       name: cleanName || user.email.split('@')[0],
       isGuest: false,
+      role: selectedRole,
+      emailVerified: user.emailVerified,
     };
-    const session = await createUserSession(userData);
+    const session = await createUserSession(userData, selectedRole);
+    if (session.error) return { success: false, error: session.error };
     return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
@@ -175,8 +235,11 @@ export async function loginAsGuest() {
       email: null,
       name: 'Tamu',
       isGuest: true,
+      role: USER_ROLE_STUDENT,
+      emailVerified: user.emailVerified,
     };
-    const session = await createUserSession(userData);
+    const session = await createUserSession(userData, USER_ROLE_STUDENT);
+    if (session.error) return { success: false, error: session.error };
     return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
@@ -186,7 +249,12 @@ export async function loginAsGuest() {
 /**
  * Login dengan Akun Google (Google Sign-In).
  */
-export async function loginWithGoogleCredential(idToken, userInfo = null) {
+export async function loginWithGoogleCredential(
+  idToken,
+  userInfo = null,
+  role = USER_ROLE_STUDENT,
+) {
+  const selectedRole = normalizeUserRole(role);
   if (!isFirebaseConfigured) {
     return { success: false, error: 'Layanan autentikasi belum dikonfigurasi.' };
   }
@@ -213,8 +281,11 @@ export async function loginWithGoogleCredential(idToken, userInfo = null) {
       name,
       photoURL,
       isGuest: false,
+      role: selectedRole,
+      emailVerified: user.emailVerified,
     };
-    const session = await createUserSession(userData);
+    const session = await createUserSession(userData, selectedRole);
+    if (session.error) return { success: false, error: session.error };
     return { success: true, ...session };
   } catch (error) {
     return { success: false, error: formatAuthError(error.code) };
@@ -260,6 +331,7 @@ export async function saveAuthenticatedProfile(profile) {
       name,
       photoURL: user.photoURL,
       isGuest: user.isAnonymous,
+      role: normalizeUserRole(userData.role),
       ...updatedProfile,
     };
     await saveUserSession(userData);
@@ -340,7 +412,18 @@ function formatAuthError(errorCode) {
   }
 }
 
-async function createUserSession(userData) {
+async function createUserSession(userData, expectedRole) {
+  if (expectedRole === USER_ROLE_TEACHER) {
+    if (!isTeacherEmail(userData.email)) {
+      return rejectAuthenticatedSession(teacherEmailOnlyMessage());
+    }
+    if (userData.emailVerified !== true) {
+      return rejectAuthenticatedSession(
+        'Verifikasi email hauraamnun@gmail.com sebelum masuk sebagai Guru.',
+      );
+    }
+  }
+
   let syncedUser = userData;
   let syncError;
   try {
@@ -349,6 +432,26 @@ async function createUserSession(userData) {
     console.warn('Gagal menyinkronkan profil pengguna:', error);
     syncError = 'Profil belum dapat disinkronkan ke database.';
   }
+  if (expectedRole && normalizeUserRole(syncedUser.role) !== expectedRole) {
+    const actualRole = normalizeUserRole(syncedUser.role);
+    return rejectAuthenticatedSession(
+      `Akun ini terdaftar sebagai ${USER_ROLE_LABELS[actualRole]}. Pilih peran tersebut untuk masuk.`,
+    );
+  }
   await saveUserSession(syncedUser);
   return { user: syncedUser, syncError };
+}
+
+async function rejectAuthenticatedSession(errorMessage) {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.warn('Gagal membatalkan sesi yang tidak diizinkan:', error);
+  }
+  await saveUserSession(null);
+  return { error: errorMessage };
+}
+
+function teacherEmailOnlyMessage() {
+  return `Fitur Guru hanya tersedia untuk akun ${TEACHER_EMAIL}.`;
 }

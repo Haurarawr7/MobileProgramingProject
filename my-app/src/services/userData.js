@@ -10,6 +10,12 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import {
+  isTeacherEmail,
+  normalizeUserRole,
+  USER_ROLE_STUDENT,
+  USER_ROLE_TEACHER,
+} from '../constants/userRoles';
+import {
   addDays,
   getActiveStreakCount,
   getCurrentWeekDateKeys,
@@ -51,6 +57,11 @@ export async function syncUserProfile(user) {
       name: (user.name || 'Siswa').trim().slice(0, 50) || 'Siswa',
       photoURL: user.photoURL?.slice(0, 2048) || null,
       isGuest: Boolean(user.isGuest),
+      role: isTeacherEmail(user.email) &&
+        (normalizeUserRole(existing.role) === USER_ROLE_TEACHER ||
+          normalizeUserRole(user.role) === USER_ROLE_TEACHER)
+        ? USER_ROLE_TEACHER
+        : USER_ROLE_STUDENT,
       school: typeof existing.school === 'string' ? existing.school.slice(0, 100) : '',
       grade: typeof existing.grade === 'string' ? existing.grade.slice(0, 40) : '',
       points,

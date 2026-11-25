@@ -40,11 +40,17 @@ import DynamicFormScreen from './src/screens/DynamicFormScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
 import LoginScreen from './src/screens/Login';
 import SigninScreen from './src/screens/Signin';
+import RoleSelectionScreen from './src/screens/RoleSelectionScreen';
 import {
   getSavedUser,
   logoutUser,
   saveAuthenticatedProfile,
 } from './src/services/auth';
+import {
+  isTeacherEmail,
+  normalizeUserRole,
+  USER_ROLE_TEACHER,
+} from './src/constants/userRoles';
 import { useFonts } from 'expo-font';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold,} from '@expo-google-fonts/poppins';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
@@ -61,6 +67,7 @@ const MINI_GAME_SCREENS = {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [navigationStack, setNavigationStack] = useState(['auth-loading']);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [scannedForm, setScannedForm] = useState(null);
   const [scannedLesson, setScannedLesson] = useState(null);
   const [lastOpenedId, setLastOpenedId] = useState(null);
@@ -86,19 +93,25 @@ export default function App() {
     ],
   };
   const activeTab = navigationStack[navigationStack.length - 1];
+  const canGenerateQr =
+    currentUser?.role === USER_ROLE_TEACHER &&
+    isTeacherEmail(currentUser.email) &&
+    !currentUser.isGuest &&
+    !currentUser.syncError;
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, InstrumentSerif_400Regular_Italic, });
 
   useEffect(() => {
     getSavedUser().then((savedUser) => {
       if (savedUser) {
+        setSelectedRole(normalizeUserRole(savedUser.role));
         setCurrentUser(savedUser);
         setNavigationStack(['home']);
       } else {
-        setNavigationStack(['login']);
+        setNavigationStack(['role-selection']);
       }
     }).catch((error) => {
       console.warn('Gagal memulihkan sesi pengguna', error);
-      setNavigationStack(['login']);
+      setNavigationStack(['role-selection']);
     });
   }, []);
 
@@ -140,7 +153,12 @@ export default function App() {
     setCompletedMateri([]);
     setLastOpenedId(null);
     lastSavedProgress.current = {};
-    setCurrentUser(user);
+    const userWithRole = {
+      ...user,
+      role: normalizeUserRole(user.role || selectedRole),
+    };
+    setSelectedRole(userWithRole.role);
+    setCurrentUser(userWithRole);
     setNavigationStack(['home']);
   };
 
@@ -156,7 +174,8 @@ export default function App() {
     setCompletedMateri([]);
     setLastOpenedId(null);
     setSelectedMateriId(null);
-    setNavigationStack(['login']);
+    setSelectedRole(null);
+    setNavigationStack(['role-selection']);
   };
 
   const handleRead = (materi) => {
@@ -323,14 +342,27 @@ export default function App() {
     case 'login':
       screen = (
         <LoginScreen
+          role={selectedRole}
+          onChooseRole={goBack}
           onLoginSuccess={handleLoginSuccess}
           onGoRegister={() => navigateTo('signin')}
+        />
+      );
+      break;
+    case 'role-selection':
+      screen = (
+        <RoleSelectionScreen
+          onSelectRole={(role) => {
+            setSelectedRole(role);
+            navigateTo('login');
+          }}
         />
       );
       break;
     case 'signin':
       screen = (
         <SigninScreen
+          role={selectedRole}
           onBack={goBack}
           onGoLogin={goBack}
           onRegisterSuccess={handleLoginSuccess}
@@ -500,7 +532,10 @@ export default function App() {
       screen = (
         <ScanScreen
           onBack={goBack}
-          onGoGenerate={() => navigateTo('generate')}
+          canGenerateQr={canGenerateQr}
+          onGoGenerate={() => {
+            if (canGenerateQr) navigateTo('generate');
+          }}
           onScanned={(result) => {
             if (result.type === 'lesson') {
               setScannedLesson(result.lesson);
@@ -544,7 +579,13 @@ export default function App() {
       );
       break;
     case 'generate':
-      screen = <GenerateScreen onBack={goBack} />;
+      screen = canGenerateQr ? (
+        <GenerateScreen onBack={goBack} />
+      ) : (
+        <View style={common.emptyBox}>
+          <Text style={common.emptyDesc}>Hanya akun guru yang dapat membuat QR pelajaran.</Text>
+        </View>
+      );
       break;
     case 'home':
     default:
